@@ -1,0 +1,2 @@
+add_executable(GameClient src/main.cpp)
+target_link_libraries(GameClient PRIVATE ClientServerContract)

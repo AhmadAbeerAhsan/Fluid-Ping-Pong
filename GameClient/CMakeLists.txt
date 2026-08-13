@@ -29,3 +29,11 @@ add_custom_command(
         ${CMAKE_SOURCE_DIR}/GameClient/src/Renderer/Shaders
         $<TARGET_FILE_DIR:GameClient>/Shaders
 )
+
+# Copy assets to build output directory
+add_custom_command(
+    TARGET GameClient POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/GameClient/assets
+        $<TARGET_FILE_DIR:GameClient>/assets
+)

@@ -4,6 +4,7 @@ add_library(
     Shader.cpp
     Model.cpp
     Renderer.cpp
+    Texture.cpp
 )
 
 target_link_libraries(Renderer

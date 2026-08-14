@@ -15,6 +15,9 @@ target_include_directories(glad PUBLIC external/glad/include)
 add_library(glm INTERFACE)
 target_include_directories(glm INTERFACE external/glm)
 
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/assimp)
+
 add_subdirectory(ClientServerContract)
 add_subdirectory(GameServer)
 add_subdirectory(GameClient)

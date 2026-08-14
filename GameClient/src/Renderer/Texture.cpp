@@ -6,14 +6,26 @@ Texture::Texture(const char* path)
 
     std::string paths{path};
 
-    int colorCode;
-    if (paths.ends_with("png"))
+     // load and generate the texture
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+    if (data == nullptr)
     {
-        colorCode = GL_RGBA;
+        std::cout << "Failed to load texture: " << path << std::endl;
+        return;
     }
-    else if (paths.ends_with("jpg"))
+
+    GLenum colorCode;
+    switch (nrChannels)
     {
-        colorCode = GL_RGB;
+        case 1: colorCode = GL_RED;  break;
+        case 2: colorCode = GL_RG;   break;
+        case 3: colorCode = GL_RGB;  break;
+        case 4: colorCode = GL_RGBA; break;
+        default:
+            std::cout << "Texture Error: unsupported channel count (" << nrChannels
+                       << ") in " << path << std::endl;
+            return;
     }
     
     glGenTextures(1, m_texture_id.get());
@@ -23,18 +35,11 @@ Texture::Texture(const char* path)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture
-    int width, height, nrChannels;
-    unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, colorCode, width, height, 0, colorCode, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
+    
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, colorCode, width, height, 0, colorCode, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    
     stbi_image_free(data);
 }
 

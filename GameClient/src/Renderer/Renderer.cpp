@@ -18,7 +18,7 @@ Renderer::Renderer(int _screen_width, int _screen_height) :
     );
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE); //enable back face culling, by default only counter clock wise triangle are rendered
+    //glEnable(GL_CULL_FACE); //enable back face culling, by default only counter clock wise triangle are rendered
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);    //enable wireframe
 }
 

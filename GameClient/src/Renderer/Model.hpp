@@ -11,6 +11,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
+#include <limits>
 
 #include "Shader.hpp"
 #include "Texture.hpp"
@@ -33,6 +34,8 @@ public:
     void RotateX(float angle);
     void RotateY(float angle);
     void RotateZ(float angle);
+    void ScaleToMaxSize(float size);
+    void ScaleDimensionToMaxSize(float size, int dimension);
 
     void AddChild(std::shared_ptr<Model> child);
 
@@ -44,6 +47,7 @@ public:
     std::shared_ptr<Shader> m_shader_ptr;
     glm::vec3 m_model_positions;
     glm::vec3 m_model_rotations;
+    glm::vec3 m_model_scales;
     glm::mat4 m_model;
     glm::mat4 m_temp_model;
 

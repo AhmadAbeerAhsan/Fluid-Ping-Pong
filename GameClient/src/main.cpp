@@ -3,6 +3,7 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/Model.hpp"
 #include "Renderer/Shader.hpp"
+#include "Renderer/ModelLoader.hpp"
 
 #include <cmath>
 float CalculateDiagonalLength(float b, float p)
@@ -247,13 +248,130 @@ void GeneratePyramid(
     m_indices.emplace_back(glm::uvec3(1,4,3));
 }
 
+void GenerateSphere(
+    std::vector<glm::vec3>& m_positions,
+    std::vector<glm::vec3>& m_colors,
+    std::vector<glm::uvec3>& m_indices,
+    std::vector<glm::vec2>& m_tex_coords,
+    int precision, float radius
+)
+{
+    float degree_intervals{360.0f/(float)precision};
+    int side_loop_count{precision/2};
+    glm::vec3 debug_color {glm::vec3(1.0f, 1.0f, 1.0f)};
+
+    //left to right x to -x
+    m_positions.emplace_back(glm::vec3(radius, 0.0f, 0.0f));
+    m_colors.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f));
+    m_tex_coords.emplace_back(glm::vec2(0.5f, 1.0f));
+
+    //left
+    for (size_t i = 0; i < side_loop_count; i++)
+    {
+        float theta{glm::radians(90.0f * (float)(i+1) / (float)(side_loop_count + 1))};
+        float ring_x{radius * std::cos(theta)};
+        float ring_r{radius * std::sin(theta)};
+        for (size_t j = 0; j < precision; j++)
+        {
+            m_positions.emplace_back(glm::vec3(
+                ring_x,
+                ring_r * std::sin(glm::radians((float)j*degree_intervals)),
+                ring_r * std::cos(glm::radians((float)j*degree_intervals))
+            ));
+            m_colors.emplace_back(glm::vec3(.33f, 0.33f, 0.33f));
+            m_tex_coords.emplace_back(glm::vec2(((float)j*degree_intervals)/360.0f, 1.0f - (ring_x/(2*radius))));
+        }
+    }
+
+    //middle
+    for (size_t j = 0; j < precision; j++)
+    {
+        m_positions.emplace_back(glm::vec3(
+            0.0f,
+            radius * std::sin(glm::radians((float)j*degree_intervals)),
+            radius * std::cos(glm::radians((float)j*degree_intervals))
+        ));
+        m_colors.emplace_back(glm::vec3(0.5f, 0.5f, 0.5f));
+        m_tex_coords.emplace_back(glm::vec2(((float)j*degree_intervals)/360.0f, 0.5f));
+    }
+    
+    //right
+    for (size_t i = 0; i < side_loop_count; i++)
+    {
+        float theta{glm::radians(90.0f * (float)(side_loop_count - i) / (float)(side_loop_count + 1))};
+        float ring_x{-radius * std::cos(theta)};
+        float ring_r{radius * std::sin(theta)};
+        for (size_t j = 0; j < precision; j++)
+        {
+            m_positions.emplace_back(glm::vec3(
+                ring_x,
+                ring_r * std::sin(glm::radians((float)j*degree_intervals)),
+                ring_r * std::cos(glm::radians((float)j*degree_intervals))
+            ));
+            m_colors.emplace_back(glm::vec3(0.66f, 0.66f, 0.66f));
+            m_tex_coords.emplace_back(glm::vec2(((float)j*degree_intervals)/360.0f, -ring_x/(2*radius)));
+        }
+    }
+
+    m_positions.emplace_back(glm::vec3(-radius, 0.0f, 0.0f));
+    m_colors.emplace_back(glm::vec3(1.0f, 1.0f, 1.0f));
+    m_tex_coords.emplace_back(glm::vec2(0.5f, 0.0f));
+
+    //left indices
+    for (unsigned int i = 0; i < precision; i++)
+    {
+        m_indices.emplace_back(glm::uvec3(
+            0,
+            ((i + 1)%precision) + 1,
+            (i%precision) + 1
+        ));
+    }
+    //middle
+    unsigned int final_base{};
+    unsigned int ring_pairs{2 * (unsigned int)side_loop_count};
+    for (unsigned i = 0; i < ring_pairs; i++)
+    {
+        unsigned curr_base{i * precision};
+        unsigned next_base{(i+1) * precision};
+        final_base = next_base;
+        for (unsigned j = 0; j < precision; j++)
+        {
+            m_indices.emplace_back(glm::uvec3(
+                curr_base + j + 1,
+                (next_base + (j + 1)%precision) + 1,
+                next_base + (j%precision) + 1
+            ));
+            m_indices.emplace_back(glm::uvec3(
+                curr_base + j + 1,
+                (curr_base + (j + 1)%precision) + 1,
+                (next_base + (j + 1)%precision) + 1
+            ));
+        }
+    }
+    //right indices
+    for (unsigned int i = 0; i < precision; i++)
+    {
+        m_indices.emplace_back(glm::uvec3(
+            final_base + 1 + i,
+            (final_base + (i + 1)%precision) + 1,
+            (final_base + precision) + 1
+        ));
+    }
+
+    for (const glm::vec2& vec : m_tex_coords)
+    {
+        std::cout << vec[0] << "," << vec[1] << std::endl;
+    }
+    
+}
+
 int main()
 {
     int screen_width {1920}, screen_height {1080};
     Renderer renderer {screen_width, screen_height};
 
     std::cout << "Creating shader..." << std::endl;
-    //std::shared_ptr<Shader> shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/shader.vs.glsl", "GameClient/src/Renderer/Shaders/shader.fs.glsl")};
+    std::shared_ptr<Shader> shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/shader.vs.glsl", "GameClient/src/Renderer/Shaders/shader.fs.glsl")};
     std::cout << "Shader created successfully." << std::endl;
 
     std::cout << "Creating shader..." << std::endl;
@@ -275,7 +393,7 @@ int main()
         (lenght - side_border_lenght)/2.0f
     )};
 
-
+/*
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
@@ -380,7 +498,7 @@ int main()
     m_colors.clear();
     m_indices.clear();
     m_tex_coords.clear();
-   GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
+    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
     std::shared_ptr<Model> top_right_border_ptr {std::make_shared<Model>()};
     top_right_border_ptr->SetGeometry(m_positions, m_indices);
     top_right_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
@@ -407,12 +525,13 @@ int main()
     top_goal_border_ptr->initializeForGL();
     top_goal_border_ptr->Translate(glm::vec3(0, 0, (lenght + min_size)/2.0f));
     top_goal_border_ptr->UpdateModelMatrix();
-
+*/
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
     m_tex_coords.clear();
-GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);    std::shared_ptr<Model> floor_ptr {std::make_shared<Model>()};
+    GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);
+    std::shared_ptr<Model> floor_ptr {std::make_shared<Model>()};
     floor_ptr->SetGeometry(m_positions, m_indices);
     floor_ptr->SetMaterial("GameClient/assets/textures/base.png", m_tex_coords);
     floor_ptr->SetShader(texture_shader_ptr);
@@ -420,26 +539,64 @@ GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, go
     floor_ptr->Translate(glm::vec3(0, -5, 0));
     floor_ptr->UpdateModelMatrix();
 
+    /*
+    std::shared_ptr<Model> handle_ptr {
+        ModelLoader::LoadFromFile("GameClient/assets/models/handle.obj", texture_shader_ptr)
+    };
+    if (handle_ptr == nullptr)
+    {
+        std::cout << "Failed to load GameClient/assets/models/handle.obj" << std::endl;
+    }
+    else
+    {
+        handle_ptr->Translate(glm::vec3(-25.0f, 0, -50.0f)); // TODO: adjust to where it should actually sit
+        handle_ptr->ScaleDimensionToMaxSize(10.0f, 1);
+        handle_ptr->RotateX(-90.0f);
+        handle_ptr->UpdateModelMatrix();
+    }
+    */
+
+    std::cout << "Generating Sphere" << std::endl;
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateSphere(m_positions, m_colors, m_indices, m_tex_coords, 30, 5);
+    std::shared_ptr<Model> sphere_ptr {std::make_shared<Model>()};
+    sphere_ptr->SetGeometry(m_positions, m_indices);
+    sphere_ptr->SetMaterial("GameClient/assets/textures/ball.png", m_tex_coords);
+    sphere_ptr->SetShader(texture_shader_ptr);
+    sphere_ptr->initializeForGL();
+    sphere_ptr->Translate(glm::vec3(0, 0, 0));
+    sphere_ptr->UpdateModelMatrix();
+
     float time{};
     while (!renderer.shouldClose())
     {
         renderer.clear();
 
+        
         texture_shader_ptr->use();
         //shader_ptr->setFloat("time", renderer.timer.currentTime / 1.0f);
         texture_shader_ptr->setMat4("view", renderer.camera.view);
         texture_shader_ptr->setMat4("projection", renderer.camera.proj);
 
-        right_border_ptr->draw();     
-        left_border_ptr->draw();
-        bottom_left_border_ptr->draw();
-        bottom_right_border_ptr->draw();
-        bottom_goal_border_ptr->draw();
-        top_left_border_ptr->draw();
-        top_right_border_ptr->draw();
-        top_goal_border_ptr->draw();
+        //right_border_ptr->draw();     
+        //left_border_ptr->draw();
+        //bottom_left_border_ptr->draw();
+        //bottom_right_border_ptr->draw();
+        //bottom_goal_border_ptr->draw();
+        //top_left_border_ptr->draw();
+        //top_right_border_ptr->draw();
+        //top_goal_border_ptr->draw();
 
         floor_ptr->draw(); 
+
+        //if (handle_ptr != nullptr)
+        //{
+            //handle_ptr->draw();
+        //}
+        sphere_ptr->draw();
 
         renderer.render();
     }

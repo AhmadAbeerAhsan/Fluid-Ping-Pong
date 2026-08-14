@@ -13,6 +13,7 @@ target_link_libraries(GameClient
     glad
     glfw
     glm
+    assimp
     ClientServerContract
     Renderer
 )

@@ -4,6 +4,7 @@ Model::Model() :
     m_model{glm::mat4(1.0f)},
     m_model_positions{glm::vec3(0.0f)},
     m_model_rotations{glm::vec3(0.0f)},
+    m_model_scales{glm::vec3(1.0f)},
     Children{}
 {
     vao_id = std::make_unique<GLuint>();
@@ -126,6 +127,7 @@ void UpdateModelMatrix();
 void Model::UpdateModelMatrix()
 {
     m_model =
+        glm::scale(glm::mat4(1.0f), m_model_scales) *
         glm::translate(glm::mat4(1.0f), m_model_positions) *
         glm::rotate(glm::mat4(1.0f),
                     glm::radians(m_model_rotations.y),
@@ -156,6 +158,52 @@ void Model::RotateY(float angle)
 void Model::RotateZ(float angle)
 {
     m_model_rotations.z += angle;
+}
+
+void Model::ScaleToMaxSize(float size)
+{
+    glm::vec3 min{std::numeric_limits<float>::max()};
+    glm::vec3 max{std::numeric_limits<float>::lowest()};
+
+    if (m_positions.size() < 1)
+    {
+        std::cout << "Model::ScaleToMaxSize: m_positions.size() < 1" << std::endl;
+    }
+ 
+    for (const glm::vec3& position : m_positions)
+    {
+        min = glm::min(min, position);
+        max = glm::max(max, position);
+    }
+    
+    float x_diff{max.x - min.x};
+    float y_diff{max.y - min.y};
+    float z_diff{max.z - min.z};
+
+    float max_diff{std::max(x_diff, std::max(y_diff, z_diff))};
+    float scale_factor{size/max_diff};
+    m_model_scales = glm::vec3(scale_factor, scale_factor, scale_factor);
+}
+
+void Model::ScaleDimensionToMaxSize(float size, int dimension)
+{
+    float min{std::numeric_limits<float>::max()};
+    float max{std::numeric_limits<float>::lowest()};
+
+    if (m_positions.size() < 1)
+    {
+        std::cout << "Model::ScaleToMaxSize: m_positions.size() < 1" << std::endl;
+    }
+ 
+    for (const glm::vec3& position : m_positions)
+    {
+        min = std::min(min, position[dimension]);
+        max = std::max(max, position[dimension]);
+    }
+
+    float diff{max - min};
+    float scale_factor{size/diff};
+    m_model_scales = glm::vec3(scale_factor, scale_factor, scale_factor);
 }
 
 void Model::AddChild(std::shared_ptr<Model> child)

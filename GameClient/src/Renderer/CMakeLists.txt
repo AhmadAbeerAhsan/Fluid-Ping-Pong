@@ -6,6 +6,8 @@ add_library(
     Renderer.cpp
     Texture.cpp
     ModelLoader.cpp
+    ObjectMaterial.cpp
+    PointLight.cpp
 )
 
 target_include_directories(Renderer PUBLIC

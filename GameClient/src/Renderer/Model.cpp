@@ -9,6 +9,7 @@ Model::Model() :
 {
     vao_id = std::make_unique<GLuint>();
     vbo_positions_id = std::make_unique<GLuint>();
+    vbo_normals_id = std::make_unique<GLuint>();
     vbo_material_id = std::make_unique<GLuint>();
     vbo_indices = std::make_unique<GLuint>();
 }
@@ -25,6 +26,7 @@ Model::~Model()
 void Model::SetShader(std::shared_ptr<Shader> shader_ptr)
 {
     m_shader_ptr = std::move(shader_ptr);
+    m_object_material.InitializeMaterial(m_shader_ptr);
 }
 
 void Model::SetMaterial(std::vector<glm::vec3> colors)
@@ -37,8 +39,8 @@ void Model::SetMaterial(std::vector<glm::vec3> colors)
                 glGenBuffers(1, vbo_material_id.get());
                 glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
                 glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(glm::vec3), m_colors.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
-                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+                glEnableVertexAttribArray(2);
             }
         };
         useTexture = std::function<void(int)>{
@@ -49,6 +51,49 @@ void Model::SetMaterial(std::vector<glm::vec3> colors)
     else
     {
         std::cout << "colors.size() != m_positions.size()" << std::endl;
+    }
+}
+
+void Model::ComputeNormals(bool is_circle)
+{
+    m_normals.resize(m_positions.size(), glm::vec3(0.0f));
+
+    if (is_circle)
+    {
+        for (size_t i = 0; i < m_positions.size(); ++i)
+        {
+            m_normals[i] = glm::normalize(m_positions[i]);
+        }
+    }
+    else
+    {
+        if (m_indices.size() == 0)
+        {
+            std::cout << "Model::ComputeNormals indices not set" << std::endl;
+        }
+        
+        for (const glm::uvec3& indices : m_indices)
+        {
+            const glm::vec3& p0 = m_positions[indices[0]];
+            const glm::vec3& p1 = m_positions[indices[1]];
+            const glm::vec3& p2 = m_positions[indices[2]];
+
+            glm::vec3 e1 = p1 - p0;
+            glm::vec3 e2 = p2 - p0;
+            glm::vec3 normal = glm::cross(e1, e2);
+
+            m_normals[indices[0]] += normal;
+            m_normals[indices[1]] += normal;
+            m_normals[indices[2]] += normal;
+        }
+
+        for (glm::vec3& normal : m_normals)
+        {
+            if (glm::dot(normal, normal) > 0.0f)
+            {
+                normal = glm::normalize(normal);
+            }
+        }
     }
 }
 
@@ -63,8 +108,8 @@ void Model::SetMaterial(const char* path, std::vector<glm::vec2> texCoords)
                 glGenBuffers(1, vbo_material_id.get());
                 glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
                 glBufferData(GL_ARRAY_BUFFER, m_texCoords.size() * sizeof(glm::vec2), m_texCoords.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
-                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+                glEnableVertexAttribArray(2);
             }
         };
         useTexture = std::function<void(int)>{
@@ -79,7 +124,7 @@ void Model::SetMaterial(const char* path, std::vector<glm::vec2> texCoords)
     }
 }
 
-void Model::SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices)
+void Model::SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices, bool is_circle)
 {
     if (positions.size() == 0)
     {
@@ -87,7 +132,6 @@ void Model::SetGeometry(const std::vector<glm::vec3>& positions, const std::vect
         return;
     }
     m_positions = positions;
-
     if (indices.size() == 0)
     {
         initIndices = std::function<void()>{
@@ -117,17 +161,12 @@ void Model::SetGeometry(const std::vector<glm::vec3>& positions, const std::vect
             }
         };
     }
-    
-    
+    ComputeNormals(is_circle);
 }
 
-void UpdateModelMatrix();
-
-// Model.cpp
 void Model::UpdateModelMatrix()
 {
     m_model =
-        glm::scale(glm::mat4(1.0f), m_model_scales) *
         glm::translate(glm::mat4(1.0f), m_model_positions) *
         glm::rotate(glm::mat4(1.0f),
                     glm::radians(m_model_rotations.y),
@@ -137,7 +176,8 @@ void Model::UpdateModelMatrix()
                     glm::vec3(1.0f, 0.0f, 0.0f)) *
         glm::rotate(glm::mat4(1.0f),
                     glm::radians(m_model_rotations.z),
-                    glm::vec3(0.0f, 0.0f, 1.0f));
+                    glm::vec3(0.0f, 0.0f, 1.0f)) *
+        glm::scale(glm::mat4(1.0f), m_model_scales);
 }
 
 void Model::Translate(glm::vec3 translation)
@@ -168,6 +208,7 @@ void Model::ScaleToMaxSize(float size)
     if (m_positions.size() < 1)
     {
         std::cout << "Model::ScaleToMaxSize: m_positions.size() < 1" << std::endl;
+        return;
     }
  
     for (const glm::vec3& position : m_positions)
@@ -193,6 +234,7 @@ void Model::ScaleDimensionToMaxSize(float size, int dimension)
     if (m_positions.size() < 1)
     {
         std::cout << "Model::ScaleToMaxSize: m_positions.size() < 1" << std::endl;
+        return;
     }
  
     for (const glm::vec3& position : m_positions)
@@ -215,6 +257,7 @@ void Model::initializeForGL()
 {
     glGenVertexArrays(1, vao_id.get());
     glGenBuffers(1, vbo_positions_id.get());
+    glGenBuffers(1, vbo_normals_id.get());
 
     glBindVertexArray(*vao_id.get());
 
@@ -222,6 +265,11 @@ void Model::initializeForGL()
     glBufferData(GL_ARRAY_BUFFER, m_positions.size() * sizeof(glm::vec3), m_positions.data(), GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 0 must match your vertex shader
     glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, *vbo_normals_id.get());
+    glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(glm::vec3), m_normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+    glEnableVertexAttribArray(1);
 
     initMaterial();
 
@@ -235,9 +283,10 @@ void Model::draw(const glm::mat4& parent_model)
 {
     useTexture(GL_TEXTURE0);
 
-    m_shader_ptr->use();
     m_temp_model = parent_model * m_model;
     m_shader_ptr->setMat4("model", m_temp_model);
+
+    m_object_material.PassUniforms();
 
     glBindVertexArray(*vao_id.get());
     drawVertices();

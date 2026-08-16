@@ -7,6 +7,7 @@ struct PositionalLight
     vec4 diffuse;
     vec4 specular;
     vec3 position;
+    mat4 proj_view;
 };
 
 struct Material
@@ -25,14 +26,16 @@ in PositionalLight oLight;
 in Material oMaterial;
 
 in vec2 TexCoord;
+in vec4 shadow_coord;
 
 uniform sampler2D ourTexture;
+uniform sampler2DShadow shTex;
 
 out vec4 FragColor;
     
+
 void main()
 {
-
     vec4 texture_color = texture(ourTexture, TexCoord);
 
     vec3 L = normalize(oVaryingLightDir);
@@ -45,10 +48,16 @@ void main()
     //angle between the view vector and reflected light
     float cosPhi = max(dot(H,N), 0.0f);
 
-    //ambient, diffuse, and specular
+    float notInShadow = textureProj(shTex, shadow_coord);
+    
     vec3 ambient = ((oLight.global_ambient * texture_color) + (oLight.ambient * texture_color)).xyz;
-    vec3 diffuse = oLight.diffuse.xyz * cosTheta;
-    vec3 specular = oLight.specular.xyz * pow(cosPhi, oMaterial.shininess * 3.0f);
+    FragColor = vec4(ambient, 1.0f);
 
-    FragColor = vec4((ambient + diffuse + specular), 1.0f);
+    if(notInShadow == 1.0)
+    {
+        vec3 diffuse = oLight.diffuse.xyz * cosTheta;
+        vec3 specular = oLight.specular.xyz * pow(cosPhi, oMaterial.shininess * 3.0f);
+
+        FragColor += vec4((diffuse + specular), 1.0f);
+    }
 }

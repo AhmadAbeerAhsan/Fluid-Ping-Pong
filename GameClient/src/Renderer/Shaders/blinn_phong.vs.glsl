@@ -11,6 +11,7 @@ struct PositionalLight
     vec4 diffuse;
     vec4 specular;
     vec3 position;
+    mat4 proj_view;
 };
 
 struct Material
@@ -35,6 +36,7 @@ out PositionalLight oLight;
 out Material oMaterial;
 
 out vec2 TexCoord;
+out vec4 shadow_coord;
 
 void main()
 {
@@ -44,6 +46,7 @@ void main()
 
     //convert vertex to view space
     vec4 P = view * model * vec4(vVertex, 1.0f);
+    shadow_coord = light.proj_view * model * vec4(vVertex, 1.0f);
     //normalize normal
     oVaryingNormal = (view * model * vec4(vNormal, 0.0f)).xyz;
     //calculate view space light vector(from vertex to light)
@@ -53,5 +56,5 @@ void main()
     //view vector is equilvalent to the negative of view space vertex position
     oVaryingVertPos = -P.xyz;
 
-    gl_Position = projection * view * model * vec4(vVertex, 1);
+    gl_Position = projection * P;
 };

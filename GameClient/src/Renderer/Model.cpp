@@ -279,22 +279,29 @@ void Model::initializeForGL()
     glBindVertexArray(0); // unbind, we'll bind again in the render loop
 }
 
-void Model::draw(const glm::mat4& parent_model)
+void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const glm::mat4& parent_model)
 {
     useTexture(GL_TEXTURE0);
 
     m_temp_model = parent_model * m_model;
-    m_shader_ptr->setMat4("model", m_temp_model);
+    shader_ptr->setMat4("model", m_temp_model);
 
-    m_object_material.PassUniforms();
-
+    if (!is_depth_shader)
+    {
+        m_object_material.PassUniforms();
+    }
+    
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CCW);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    
     glBindVertexArray(*vao_id.get());
     drawVertices();
     glBindVertexArray(0);
 
     for (std::shared_ptr<Model>& child : Children)
     {
-        child->draw(m_temp_model);
+        child->draw(shader_ptr, is_depth_shader, m_temp_model);
     }
-    
 }

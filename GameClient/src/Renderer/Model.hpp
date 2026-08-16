@@ -65,7 +65,7 @@ public:
     ObjectMaterial m_object_material{};
 
     void initializeForGL();
-    void draw(const glm::mat4& parent_model = glm::mat4(1.0f));
+    void draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const glm::mat4& parent_model = glm::mat4(1.0f));
 
 private:
     std::function<void()> initMaterial;

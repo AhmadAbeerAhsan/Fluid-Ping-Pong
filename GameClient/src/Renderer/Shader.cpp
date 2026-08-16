@@ -133,8 +133,21 @@ void Shader::setFloat(const std::string &name, float value) const
 
 void Shader::setMat4(const std::string &name, glm::mat4 value) const
 {
-    //glUniformMatrix4fv(location, number of matric, should Transpose, glm::value_ptr(value));
-    glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+    GLint current = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &current);
+    if (static_cast<GLuint>(current) != ID)
+    {
+        std::cout << "WARNING: setMat4(\"" << name << "\") called on program " << ID
+                   << " but program " << current << " is currently bound — uniform update will be lost/wrong" << std::endl;
+    }
+
+    GLint loc = glGetUniformLocation(ID, name.c_str());
+    if (loc == -1)
+    {
+        std::cout << name << ": uniform not found on program " << ID << std::endl;
+        return;
+    }
+    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));
 }
 
 void Shader::addAttribute(std::string attribute)

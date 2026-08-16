@@ -251,11 +251,13 @@ void GenerateXZBase(
         }
     }
 
+    /*
     std::cout << "Normals" << std::endl;
     for (const glm::vec3& vec : m_normals)
     {
         std::cout << vec[0] << "," << vec[1] << "," << vec[2] << "," << std::endl;
     }
+    */
 }
 
 void GeneratePyramid(
@@ -425,22 +427,25 @@ int main()
     int screen_width {1920}, screen_height {1080};
     Renderer renderer {screen_width, screen_height};
 
-    std::cout << "Creating shader..." << std::endl;
-    std::shared_ptr<Shader> shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/shader.vs.glsl", "GameClient/src/Renderer/Shaders/shader.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
-
-    std::cout << "Creating shader..." << std::endl;
-    std::shared_ptr<Shader> texture_shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture.vs.glsl", "GameClient/src/Renderer/Shaders/texture.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
-
-    std::cout << "Creating shader..." << std::endl;
+    std::cout << "Creating shader blinn_phong_shdader_ptr..." << std::endl;
     std::shared_ptr<Shader> blinn_phong_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/blinn_phong.vs.glsl", "GameClient/src/Renderer/Shaders/blinn_phong.fs.glsl")};
     std::cout << "Shader created successfully." << std::endl;
+    //blinn_phong_shdader_ptr->setInt("shTex", 1);
+    //blinn_phong_shdader_ptr->setInt("ourTexture", 0);
+    std::cout << "blinn_phong_shdader_ptr id: " << blinn_phong_shdader_ptr->ID << std::endl;
 
+    std::cout << "Creating shader shadow_map_shdader_ptr..." << std::endl;
+    std::shared_ptr<Shader> shadow_map_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/shadow_map.vs.glsl", "GameClient/src/Renderer/Shaders/shadow_map.fs.glsl")};
+    std::cout << "Shader created successfully." << std::endl;
+    std::cout << "shadow_map_shdader_ptr id: " << shadow_map_shdader_ptr->ID << std::endl;
+
+    
     std::vector<std::shared_ptr<Model>> models{};
 
-    PointLight pointLight{};
-    pointLight.AddShader(blinn_phong_shdader_ptr);
+    PointLight pointLight{(float)screen_width, (float)screen_height};
+    pointLight.AddRenderShader(blinn_phong_shdader_ptr);
+    pointLight.AddShadowMapShader(shadow_map_shdader_ptr);
+    pointLight.SetupShadowBuffers(screen_width, screen_height);
 
     std::vector<glm::vec3> m_positions {};
     std::vector<glm::vec3> m_colors {};
@@ -609,6 +614,7 @@ int main()
     floor_ptr->SetShader(blinn_phong_shdader_ptr);
     floor_ptr->initializeForGL();
     floor_ptr->Translate(glm::vec3(0, -5, 0));
+    floor_ptr->RotateY(0.0f);
     floor_ptr->UpdateModelMatrix();
     models.emplace_back(floor_ptr);
     
@@ -647,17 +653,25 @@ int main()
     while (!renderer.shouldClose())
     {
         renderer.clear();
-        
+
+        pointLight.StartFillingShadowBuffer();
+        for (const std::shared_ptr<Model>& model_ptr : models)
+        {
+            model_ptr->draw(pointLight.m_shadow_map_shader_ptr, true);
+        }
+
         blinn_phong_shdader_ptr->use();
+        pointLight.StopFillingShadowBuffer();
+        
         blinn_phong_shdader_ptr->setMat4("view", renderer.camera.view);
         blinn_phong_shdader_ptr->setMat4("projection", renderer.camera.proj);
-        pointLight.PassUniforms();
+        pointLight.PassUniformsToRendererShader();
         
         for (const std::shared_ptr<Model>& model_ptr : models)
         {
-            model_ptr->draw();
+            model_ptr->draw(blinn_phong_shdader_ptr, false);
         }
-
+        
         renderer.render();
     }
     

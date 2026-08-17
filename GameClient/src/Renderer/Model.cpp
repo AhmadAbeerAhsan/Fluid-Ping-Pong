@@ -185,6 +185,11 @@ void Model::Translate(glm::vec3 translation)
     m_model_positions += translation;
 }
 
+void Model::SetPosition(glm::vec3 new_position)
+{
+    m_model_positions = new_position;
+}
+
 void Model::RotateX(float angle)
 {
     m_model_rotations.x += angle;
@@ -291,11 +296,6 @@ void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const
     {
         m_object_material.PassUniforms();
     }
-    
-    glEnable(GL_CULL_FACE);
-    glFrontFace(GL_CCW);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
     
     glBindVertexArray(*vao_id.get());
     drawVertices();

@@ -3,7 +3,7 @@
 Texture::Texture(const char* path)
 {
     m_texture_id = std::make_unique<GLuint>();
-
+    stbi_set_flip_vertically_on_load(true);
     std::string paths{path};
 
      // load and generate the texture

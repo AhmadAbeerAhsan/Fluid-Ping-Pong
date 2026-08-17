@@ -32,6 +32,7 @@ public:
 
     void UpdateModelMatrix();
     void Translate(glm::vec3 translation);
+    void SetPosition(glm::vec3 new_position);
     void RotateX(float angle);
     void RotateY(float angle);
     void RotateZ(float angle);

@@ -35,9 +35,11 @@ class Renderer
         void clear();
         void render();
 
-        Timer timer{};
+        const glm::vec3& GetCameraPosition();
 
+        Timer timer{};
         Camera camera;
+
     private:
         int screen_width; int screen_height;
         GLFWwindow* window;

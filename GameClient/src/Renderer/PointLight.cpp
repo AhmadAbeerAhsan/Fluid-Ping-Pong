@@ -136,15 +136,24 @@ void PointLight::StartFillingShadowBuffer()
 
 void PointLight::StopFillingShadowBuffer()
 {
-    glEnable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_POLYGON_OFFSET_FILL);
 
     //after all models passed
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, *m_shadow_tex);
     
     //glDrawBuffer(GL_FRONT); // re-enables drawing colors
     glDrawBuffer(GL_BACK);
+}
+
+void PointLight::EnableShadowTexture()
+{
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, *m_shadow_tex);
+    
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CCW);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
 }
 
 void PointLight::SetupShadowBuffers(float width, float height)

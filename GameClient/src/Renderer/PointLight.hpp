@@ -33,6 +33,8 @@ public:
     void StartFillingShadowBuffer();
     void StopFillingShadowBuffer();
 
+    void EnableShadowTexture();
+
     float m_width, m_height;
 
     glm::vec4 m_global_ambient;

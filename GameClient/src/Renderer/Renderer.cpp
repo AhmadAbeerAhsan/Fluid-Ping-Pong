@@ -39,6 +39,11 @@ void Renderer::render()
     glfwPollEvents();
 }
 
+const glm::vec3 &Renderer::GetCameraPosition()
+{
+    return camera.position;
+}
+
 void Renderer::intializeGLFW(int width, int height)
 {
     glfwInit();

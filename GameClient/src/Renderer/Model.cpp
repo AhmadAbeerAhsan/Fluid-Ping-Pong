@@ -284,6 +284,7 @@ void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const
     useTexture(GL_TEXTURE0);
 
     m_temp_model = parent_model * m_model;
+    
     shader_ptr->setMat4("model", m_temp_model);
 
     if (!is_depth_shader)

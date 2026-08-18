@@ -8,6 +8,7 @@ add_library(
     ModelLoader.cpp
     ObjectMaterial.cpp
     PointLight.cpp
+    Framebuffer.cpp
 )
 
 target_include_directories(Renderer PUBLIC

@@ -5,6 +5,7 @@
 #include "Renderer/Shader.hpp"
 #include "Renderer/ModelLoader.hpp"
 #include "Renderer/PointLight.hpp"
+#include "Renderer/Framebuffer.hpp"
 
 #include <cmath>
 float CalculateDiagonalLength(float b, float p)
@@ -489,6 +490,31 @@ void GenerateSkyboxCube(
     }
 }
 
+void GenerateFullscreenQuad(
+    std::vector<glm::vec3>& m_positions,
+    std::vector<glm::vec2>& m_tex_coords,
+    std::vector<glm::uvec3>& m_indices
+)
+{
+    m_positions = {
+        {-1.0f,  1.0f, 0.0f}, {-1.0f, -1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f},
+        {-1.0f,  1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f}, { 1.0f,  1.0f, 0.0f}
+    };
+
+    m_tex_coords = {
+        {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
+        {0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}
+    };
+
+    // No sharing between triangles, so indices are just a trivial
+    // sequential grouping of the array above into (0,1,2), (3,4,5).
+    m_indices.reserve(m_positions.size() / 3);
+    for (unsigned int i = 0; i < m_positions.size(); i += 3)
+    {
+        m_indices.emplace_back(i, i + 1, i + 2);
+    }
+}
+
 int main()
 {
     int screen_width {1920}, screen_height {1080};
@@ -506,11 +532,16 @@ int main()
     std::cout << "Shader created successfully." << std::endl;
     std::cout << "shadow_map_shdader_ptr id: " << shadow_map_shdader_ptr->ID << std::endl;
 
-    std::cout << "Creating shader texture_shdader_ptr..." << std::endl;
-    std::shared_ptr<Shader> texture_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture.vs.glsl", "GameClient/src/Renderer/Shaders/texture.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
-    std::cout << "texture_shdader_ptr id: " << texture_shdader_ptr->ID << std::endl;
+    //std::cout << "Creating shader texture_shdader_ptr..." << std::endl;
+    //std::shared_ptr<Shader> texture_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture.vs.glsl", "GameClient/src/Renderer/Shaders/texture.fs.glsl")};
+    //std::cout << "Shader created successfully." << std::endl;
+    //std::cout << "texture_shdader_ptr id: " << texture_shdader_ptr->ID << std::endl;
     
+    std::cout << "Creating shader texture_cubemap_shdader_ptr..." << std::endl;
+    std::shared_ptr<Shader> texture_cubemap_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl")};
+    std::cout << "Shader created successfully." << std::endl;
+    std::cout << "texture_cubemap_shdader_ptr id: " << texture_cubemap_shdader_ptr->ID << std::endl;
+
     std::vector<std::shared_ptr<Model>> models{};
 
     PointLight pointLight{(float)screen_width, (float)screen_height};
@@ -688,6 +719,20 @@ int main()
     floor_ptr->RotateY(0.0f);
     floor_ptr->UpdateModelMatrix();
     models.emplace_back(floor_ptr);
+
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);
+    std::shared_ptr<Model> water_floor_ptr {std::make_shared<Model>()};
+    water_floor_ptr->SetGeometry(m_positions, m_indices);
+    water_floor_ptr->SetMaterial("GameClient/assets/textures/base.png", m_tex_coords);
+    water_floor_ptr->SetShader(blinn_phong_shdader_ptr);
+    water_floor_ptr->initializeForGL();
+    water_floor_ptr->Translate(glm::vec3(0, -5, 0));
+    water_floor_ptr->RotateY(0.0f);
+    water_floor_ptr->UpdateModelMatrix();
     
     std::shared_ptr<Model> handle_ptr {
         ModelLoader::LoadFromFile("GameClient/assets/models/handle.obj", blinn_phong_shdader_ptr)
@@ -718,26 +763,35 @@ int main()
     sphere_ptr->Translate(glm::vec3(0, 0, 0));
     sphere_ptr->UpdateModelMatrix();
     models.emplace_back(sphere_ptr);
-
-    std::cout << "Generating cube" << std::endl;
+    
+    std::vector<std::string> cubemap_paths{
+        "GameClient/assets/textures/cube_maps/px.png",
+        "GameClient/assets/textures/cube_maps/nx.png",
+        "GameClient/assets/textures/cube_maps/py.png",
+        "GameClient/assets/textures/cube_maps/ny.png",
+        "GameClient/assets/textures/cube_maps/pz.png",
+        "GameClient/assets/textures/cube_maps/nz.png"
+    };
+    std::cout << "Generating cube map" << std::endl;
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
     m_tex_coords.clear();
     GenerateSkyboxCube(m_positions, m_tex_coords, m_indices);
-    std::shared_ptr<Model> skybox_ptr {std::make_shared<Model>()};
-    skybox_ptr->SetGeometry(m_positions, m_indices, false);
-    skybox_ptr->SetMaterial("GameClient/assets/textures/cubemap.png", m_tex_coords);
-    skybox_ptr->SetShader(texture_shdader_ptr);
-    skybox_ptr->initializeForGL();
-    skybox_ptr->SetPosition(renderer.GetCameraPosition());
-    skybox_ptr->UpdateModelMatrix();
+    std::shared_ptr<Model> cube_skybox_ptr {std::make_shared<Model>()};
+    cube_skybox_ptr->SetGeometry(m_positions, m_indices, false);
+    cube_skybox_ptr->SetMaterial(cubemap_paths, m_tex_coords);
+    cube_skybox_ptr->SetShader(texture_cubemap_shdader_ptr);
+    cube_skybox_ptr->initializeForGL();
+
+    std::cout << "Entering Render Loop" << std::endl;
 
     float time{};
     while (!renderer.shouldClose())
     {
         renderer.clear();
 
+        
         pointLight.StartFillingShadowBuffer();
         for (const std::shared_ptr<Model>& model_ptr : models)
         {
@@ -745,13 +799,12 @@ int main()
         }
         pointLight.StopFillingShadowBuffer();
 
-        skybox_ptr->SetPosition(renderer.GetCameraPosition());
-        skybox_ptr->UpdateModelMatrix();
-        texture_shdader_ptr->use();
-        texture_shdader_ptr->setMat4("view", renderer.camera.view);
-        texture_shdader_ptr->setMat4("projection", renderer.camera.proj);
         glDisable(GL_DEPTH_TEST);
-        skybox_ptr->draw(texture_shdader_ptr, false);
+        texture_cubemap_shdader_ptr->use();
+        glm::mat4 skyboxView = glm::mat4(glm::mat3(renderer.camera.view));
+        texture_cubemap_shdader_ptr->setMat4("view", skyboxView);
+        texture_cubemap_shdader_ptr->setMat4("projection", renderer.camera.proj);
+        cube_skybox_ptr->draw(texture_cubemap_shdader_ptr, false);
         glEnable(GL_DEPTH_TEST);
 
         blinn_phong_shdader_ptr->use();
@@ -764,7 +817,7 @@ int main()
         {
             model_ptr->draw(blinn_phong_shdader_ptr, false);
         }
-        
+
         renderer.render();
     }
     

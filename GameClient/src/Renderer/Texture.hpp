@@ -3,6 +3,8 @@
 #include <memory>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <functional>
 
 #include "stb_image.h"
 
@@ -16,7 +18,8 @@ private:
 
 public:
     Texture(const char* path);
+    Texture(std::vector<std::string> paths);
 
-    void Use(int gl_texpos);
+    std::function<void(int)> Use;
 };
 

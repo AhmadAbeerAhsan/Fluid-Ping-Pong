@@ -54,6 +54,100 @@ void Model::SetMaterial(std::vector<glm::vec3> colors)
     }
 }
 
+void Model::SetMaterial(glm::vec3 color)
+{
+    m_colors.clear();
+    m_colors.reserve(m_positions.size());
+    m_colors.assign(m_positions.size(), color);
+
+    initMaterial = std::function<void()>{
+        [this]{
+            glGenBuffers(1, vbo_material_id.get());
+            glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
+            glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(glm::vec3), m_colors.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+            glEnableVertexAttribArray(2);
+        }
+    };
+    useTexture = std::function<void(int)>{
+        [this](int gl_texPos){
+        }
+    };
+}
+
+void Model::SetMaterial(const char* path, std::vector<glm::vec2> texCoords)
+{
+    if (texCoords.size() == m_positions.size())
+    {
+        m_texture = std::make_unique<Texture>(path);
+        m_texCoords = texCoords;
+        initMaterial = std::function<void()>{
+            [this]{
+                glGenBuffers(1, vbo_material_id.get());
+                glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
+                glBufferData(GL_ARRAY_BUFFER, m_texCoords.size() * sizeof(glm::vec2), m_texCoords.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+                glEnableVertexAttribArray(2);
+            }
+        };
+        useTexture = std::function<void(int)>{
+            [this](int gl_texPos){
+                m_texture->Use(gl_texPos);
+            }
+        };
+    }
+    else
+    {
+        std::cout << "texCoords.size() != m_positions.size()" << std::endl;
+    }
+}
+
+void Model::SetMaterial(std::vector<glm::vec2> texCoords)
+{
+    if (texCoords.size() == m_positions.size())
+    {
+        m_texCoords = texCoords;
+        initMaterial = std::function<void()>{
+            [this]{
+                glGenBuffers(1, vbo_material_id.get());
+                glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
+                glBufferData(GL_ARRAY_BUFFER, m_texCoords.size() * sizeof(glm::vec2), m_texCoords.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
+                glEnableVertexAttribArray(2);
+            }
+        };
+        useTexture = std::function<void(int)>{
+            [this](int gl_texPos){
+            }
+        };
+    }
+    else
+    {
+        std::cout << "texCoords.size() != m_positions.size()" << std::endl;
+    }
+}
+
+void Model::SetMaterial(std::vector<std::string> paths, std::vector<glm::vec2> texCoords)
+{
+        m_texture = std::make_unique<Texture>(paths);
+        m_texCoords = texCoords;
+        initMaterial = std::function<void()>{
+            [this]{
+                // textures coord are not passed to cube maps
+            }
+        };
+        useTexture = std::function<void(int)>{
+            [this](int gl_texPos){
+                m_texture->Use(gl_texPos);
+            }
+        };
+}
+
+void Model::ActivateTextureForOther(int gl_texPos)
+{
+    m_texture->Use(gl_texPos);
+}
+
 void Model::ComputeNormals(bool is_circle)
 {
     m_normals.resize(m_positions.size(), glm::vec3(0.0f));
@@ -94,33 +188,6 @@ void Model::ComputeNormals(bool is_circle)
                 normal = glm::normalize(normal);
             }
         }
-    }
-}
-
-void Model::SetMaterial(const char* path, std::vector<glm::vec2> texCoords)
-{
-    if (texCoords.size() == m_positions.size())
-    {
-        m_texture = std::make_unique<Texture>(path);
-        m_texCoords = texCoords;
-        initMaterial = std::function<void()>{
-            [this]{
-                glGenBuffers(1, vbo_material_id.get());
-                glBindBuffer(GL_ARRAY_BUFFER, *vbo_material_id.get());
-                glBufferData(GL_ARRAY_BUFFER, m_texCoords.size() * sizeof(glm::vec2), m_texCoords.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0); // location 1 must match your vertex shader
-                glEnableVertexAttribArray(2);
-            }
-        };
-        useTexture = std::function<void(int)>{
-            [this](int gl_texPos){
-                m_texture->Use(gl_texPos);
-            }
-        };
-    }
-    else
-    {
-        std::cout << "texCoords.size() != m_positions.size()" << std::endl;
     }
 }
 
@@ -205,6 +272,11 @@ void Model::RotateZ(float angle)
     m_model_rotations.z += angle;
 }
 
+void Model::ScaleByFactor(float factor)
+{
+    m_model_scales = glm::vec3(factor, factor, factor);
+}
+
 void Model::ScaleToMaxSize(float size)
 {
     glm::vec3 min{std::numeric_limits<float>::max()};
@@ -284,7 +356,7 @@ void Model::initializeForGL()
     glBindVertexArray(0); // unbind, we'll bind again in the render loop
 }
 
-void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const glm::mat4& parent_model)
+void Model::draw(std::shared_ptr<Shader> shader_ptr, bool send_materials, const glm::mat4& parent_model)
 {
     useTexture(GL_TEXTURE0);
 
@@ -292,7 +364,7 @@ void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const
     
     shader_ptr->setMat4("model", m_temp_model);
 
-    if (!is_depth_shader)
+    if (send_materials)
     {
         m_object_material.PassUniforms();
     }
@@ -303,6 +375,6 @@ void Model::draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const
 
     for (std::shared_ptr<Model>& child : Children)
     {
-        child->draw(shader_ptr, is_depth_shader, m_temp_model);
+        child->draw(shader_ptr, send_materials, m_temp_model);
     }
 }

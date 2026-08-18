@@ -75,8 +75,8 @@ void PointLight::AddRenderShader(std::shared_ptr<Shader> shader_ptr)
     std::cout << "[" << shader_ptr->ID << "] shTex loc = " << shTexLoc
               << ", ourTexture loc = " << ourTexLoc << std::endl;
 
-    if (shTexLoc == -1)
-        std::cout << "WARNING: 'shTex' uniform not found — check spelling or whether it's optimized out (unused in a code path)" << std::endl;
+    //if (shTexLoc == -1)
+        //std::cout << "WARNING: 'shTex' uniform not found — check spelling or whether it's optimized out (unused in a code path)" << std::endl;
 
     glProgramUniform1i(shader_ptr->ID, shTexLoc, 1);   // must match GL_TEXTURE1
     glProgramUniform1i(shader_ptr->ID, ourTexLoc, 0);  // must match GL_TEXTURE0

@@ -28,7 +28,12 @@ public:
     void SetShader(std::shared_ptr<Shader> shader_ptr);
     void SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices, bool is_circle = false);
     void SetMaterial(const char* path, std::vector<glm::vec2> texCoords);
+    void SetMaterial(std::vector<glm::vec2> texCoords);
     void SetMaterial(std::vector<glm::vec3> colors);
+    void SetMaterial(glm::vec3 color);
+
+    void SetMaterial(std::vector<std::string> paths, std::vector<glm::vec2> texCoords);
+    void ActivateTextureForOther(int gl_texPos);
 
     void UpdateModelMatrix();
     void Translate(glm::vec3 translation);
@@ -36,6 +41,7 @@ public:
     void RotateX(float angle);
     void RotateY(float angle);
     void RotateZ(float angle);
+    void ScaleByFactor(float factor);
     void ScaleToMaxSize(float size);
     void ScaleDimensionToMaxSize(float size, int dimension);
 
@@ -66,7 +72,7 @@ public:
     ObjectMaterial m_object_material{};
 
     void initializeForGL();
-    void draw(std::shared_ptr<Shader> shader_ptr, bool is_depth_shader, const glm::mat4& parent_model = glm::mat4(1.0f));
+    void draw(std::shared_ptr<Shader> shader_ptr, bool send_materials, const glm::mat4& parent_model = glm::mat4(1.0f));
 
 private:
     std::function<void()> initMaterial;

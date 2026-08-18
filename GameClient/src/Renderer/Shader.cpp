@@ -144,7 +144,7 @@ void Shader::setMat4(const std::string &name, glm::mat4 value) const
     GLint loc = glGetUniformLocation(ID, name.c_str());
     if (loc == -1)
     {
-        std::cout << name << ": uniform not found on program " << ID << std::endl;
+        //std::cout << name << ": uniform not found on program " << ID << std::endl;
         return;
     }
     glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));

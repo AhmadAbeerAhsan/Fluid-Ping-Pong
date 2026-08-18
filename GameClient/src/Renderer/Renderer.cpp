@@ -30,7 +30,10 @@ void Renderer::clear()
 {
     timer.calculateDelta();
     processInput();
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glStencilMask(0xFF);
+    glStencilFunc(GL_ALWAYS, 0, 0xFF);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 
 void Renderer::render()
@@ -50,6 +53,11 @@ void Renderer::intializeGLFW(int width, int height)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // get access to smaller subset of features without backward compatible features
+    glfwWindowHint(GLFW_STENCIL_BITS, 8);
+    //GLint stencilBits;
+    //glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
+    //std::cout << "Stencil bits: " << stencilBits << std::endl;
+
     window = glfwCreateWindow(width, height, "Learn OpenGl", nullptr, nullptr);
     if (window == NULL)
     {

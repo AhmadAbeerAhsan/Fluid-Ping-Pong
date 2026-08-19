@@ -150,6 +150,49 @@ void Shader::setMat4(const std::string &name, glm::mat4 value) const
     glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));
 }
 
+void Shader::setVec3(const std::string &name, glm::vec3 value) const
+{
+    GLint current = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &current);
+    if (static_cast<GLuint>(current) != ID)
+    {
+        std::cout << "WARNING: setVec3(\"" << name << "\") called on program " << ID
+                   << " but program " << current << " is currently bound — uniform update will be lost/wrong" << std::endl;
+    }
+
+    GLint loc = glGetUniformLocation(ID, name.c_str());
+    if (loc == -1)
+    {
+        //std::cout << name << ": uniform not found on program " << ID << std::endl;
+        return;
+    }
+    glUniform3fv(loc, 1, glm::value_ptr(value));
+}
+
+void Shader::setVec2(const std::string &name, glm::vec2 value) const
+{
+    GLint current = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &current);
+
+    if (static_cast<GLuint>(current) != ID)
+    {
+        std::cout << "WARNING: setVec2(\"" << name << "\") called on program " << ID
+                  << " but program " << current
+                  << " is currently bound — uniform update will be lost/wrong"
+                  << std::endl;
+    }
+
+    GLint loc = glGetUniformLocation(ID, name.c_str());
+
+    if (loc == -1)
+    {
+        // std::cout << name << ": uniform not found on program " << ID << std::endl;
+        return;
+    }
+
+    glUniform2fv(loc, 1, glm::value_ptr(value));
+}
+
 void Shader::addAttribute(std::string attribute)
 {
     attributes[attribute] = attributeId;

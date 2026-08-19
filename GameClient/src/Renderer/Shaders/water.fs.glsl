@@ -1,47 +1,18 @@
 #version 330 core
+out vec4 FragColor;
 
-struct PositionalLight
-{
-    vec4 global_ambient;
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-    vec3 position;
-    mat4 proj_view;
-};
-
-struct Material
-{
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-    float shininess;
-};
-
-in vec3 oVaryingNormal;
-in vec3 oVaryingLightDir;
-in vec3 oVaryingVertPos;
-
-in vec3 oWorldPosition;
-in vec3 oWorldNormal;
-
-in PositionalLight oLight;
-in Material oMaterial;
-
+in vec3 ViewNormal;
+in vec3 WorldNormal;
+in vec3 ViewPosition;
+in vec3 WorldPosition;
 in vec2 TexCoord;
-in vec4 shadow_coord;
 
-uniform sampler2D ourTexture;   //0
-uniform sampler2DShadow shTex;  //1
-uniform samplerCube skybox;     //2
-uniform sampler2D scene;        //3
-
-uniform bool enableReflection;
 uniform vec3 cameraPosition;
 uniform mat4 projection;
 uniform vec2 resolution;
 
-out vec4 FragColor;
+uniform samplerCube skybox;
+uniform sampler2D scene;
 
 struct HitInfo
 {
@@ -57,9 +28,6 @@ void swap(inout float a, inout float b)
     a         = b;
     b         = tmp;
 }
-
-const float zThickness = 0.5f;
-const int rayMaxSteps = 100;
 
 bool castScreenspaceRay(vec3 v_start, vec3 v_direction, out HitInfo hitinfo, float max_distance)
 {
@@ -99,15 +67,16 @@ bool castScreenspaceRay(vec3 v_start, vec3 v_direction, out HitInfo hitinfo, flo
     vec4 h_current = h_start;
 
     // apply Stride (to visit every stride-th pixel)
-    float rayStride = 10.0f; // to set later
+    float rayStride = 5.0f; // to set later
     s_delta *= rayStride;  
     h_delta *= rayStride;
 
     int stepCount = 0;
     bool foundHit     = false;
     float rayZ_prev = v_start.z;
+    int rayMaxSteps = 100; 
     int maxSteps  = min(rayMaxSteps, int(num_steps / rayStride));
-    
+
     // for each pixel on ray
     for (; 
         stepCount < maxSteps;
@@ -122,6 +91,7 @@ bool castScreenspaceRay(vec3 v_start, vec3 v_direction, out HitInfo hitinfo, flo
 
         ivec2 TC = ivec2(s_current);
         float sceneZMax = texelFetch(scene, TC, 0).a;
+        float zThickness = 2.0f;
         float sceneZMin = sceneZMax - zThickness;
 
         // TODO:  b) Use the homogenized "h_"-vector to compute the ray-z-value at the end of the current pixel (i.e. +0.5 pixels in ray direction)
@@ -164,85 +134,28 @@ bool castScreenspaceRay(vec3 v_start, vec3 v_direction, out HitInfo hitinfo, flo
     return foundHit;
 }
 
-float lookUp(float ox, float oy)
-{
-    const float bias = 0.0000001f;
-
-    float t = textureProj(
-        shTex,
-        shadow_coord + vec4(
-            ox * 0.001 * shadow_coord.w,
-            oy * 0.001 * shadow_coord.w,
-            -bias * shadow_coord.w,
-            0.0
-        )
-    );
-    return t;
-}
-
 void main()
-{
-    vec4 texture_color = texture(ourTexture, TexCoord);
+{    
+    vec3 I = normalize(WorldPosition - cameraPosition);
+    vec3 R = reflect(I, normalize(WorldNormal));
 
-    vec3 L = normalize(oVaryingLightDir);
-    vec3 N = normalize(oVaryingNormal);
-    vec3 V = normalize(oVaryingVertPos);
-    vec3 H = normalize(L + V);
+    //raytrace
+    vec3 incident = normalize(ViewPosition);
+    vec3 n = normalize(ViewNormal);
+    vec3 reflect_ray_dir = normalize(reflect(incident, n));
+    vec3 reflect_ray_pos = ViewPosition + reflect_ray_dir;
 
-    float shadow_factor = 0.0f;
-    float swidth = 2.5f;
+    HitInfo refract_hitinfo;
 
-    vec2 offset = mod(floor(gl_FragCoord.xy), 2.0) * swidth;
-    shadow_factor += lookUp(-1.5*swidth + offset.x,  1.5*swidth-offset.y);
-    shadow_factor += lookUp(-1.5*swidth + offset.x, -0.5*swidth-offset.y);
-    shadow_factor += lookUp( 0.5*swidth + offset.x,  1.5*swidth-offset.y);
-    shadow_factor += lookUp( 0.5*swidth + offset.x, -0.5*swidth-offset.y);
-    shadow_factor = shadow_factor/4.0f;
-
-    //angle between the view and reflected light
-    float cosTheta = max(dot(N,L), 0.0f);
-    //angle between the view vector and reflected light
-    float cosPhi = max(dot(H,N), 0.0f);
-
-    //float notInShadow = textureProj(shTex, shadow_coord);
-    
-    vec3 ambient = ((oLight.global_ambient * texture_color) + (oLight.ambient * texture_color)).xyz;
-    FragColor = vec4(ambient, -oVaryingVertPos.z);
-
-    vec3 diffuse = oLight.diffuse.xyz * cosTheta;
-    vec3 specular = oLight.specular.xyz * pow(cosPhi, oMaterial.shininess * 3.0f);
-
-    FragColor += shadow_factor * vec4((diffuse + specular), 0.0f);
-
-    if(!enableReflection)
-        return;
-
-    vec3 I = normalize(oWorldPosition - cameraPosition);
-    vec3 R = reflect(I, normalize(oWorldNormal));
-
-    vec3 view_reflect_ray_dir = normalize(reflect(-V, N));
-    vec3 view_reflect_ray_pos = -oVaryingVertPos + view_reflect_ray_dir;
-    vec4 reflected_color;
-    HitInfo reflect_hitinfo;
+    FragColor = texture(skybox, R);
     bool res = castScreenspaceRay(
-        view_reflect_ray_pos,
-        view_reflect_ray_dir,
-        reflect_hitinfo,
+        reflect_ray_pos,
+        reflect_ray_dir,
+        refract_hitinfo,
         100
     );
     if(res)
     {
-        reflected_color = vec4(texelFetch(scene, reflect_hitinfo.tc, 0).rgb, 1.0f);
+        FragColor = vec4(texelFetch(scene, refract_hitinfo.tc, 0).rgb, 1.0f);
     }
-    else
-    {
-        reflected_color = texture(skybox, R);
-    }
-
-
-    float cosTheta2 = max(dot(N, V), 0.0);
-    float F0 = 0.05;
-    float fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta2, 5.0);
-
-    FragColor.rgb = mix(FragColor.rgb, reflected_color.rgb, fresnel);
 }

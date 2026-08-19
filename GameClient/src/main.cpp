@@ -261,6 +261,38 @@ void GenerateXZBase(
     */
 }
 
+void GenerateXZBase2(
+    std::vector<glm::vec3>& m_positions,
+    std::vector<glm::vec3>& m_colors,
+    std::vector<glm::uvec3>& m_indices,
+    std::vector<glm::vec2>& m_tex_coords,
+    float x_size,
+    float z_size
+)
+{
+    // Rectangle corners on the XZ plane
+    m_positions.emplace_back( x_size / 2.0f, 0.0f, -z_size / 2.0f); // 0: bottom-left
+    m_positions.emplace_back( -x_size / 2.0f, 0.0f, -z_size / 2.0f); // 1: bottom-right
+    m_positions.emplace_back( -x_size / 2.0f, 0.0f,  z_size / 2.0f); // 2: top-right
+    m_positions.emplace_back(x_size / 2.0f, 0.0f,  z_size / 2.0f); // 3: top-left
+
+    // Use the entire texture
+    m_tex_coords.emplace_back(0.0f, 0.0f); // 0
+    m_tex_coords.emplace_back(1.0f, 0.0f); // 1
+    m_tex_coords.emplace_back(1.0f, 1.0f); // 2
+    m_tex_coords.emplace_back(0.0f, 1.0f); // 3
+
+    // Color
+    for (int i = 0; i < 4; ++i)
+    {
+        m_colors.emplace_back(1.0f, 0.0f, 0.0f);
+    }
+
+    // Two triangles
+    m_indices.emplace_back(0, 2, 3);
+    m_indices.emplace_back(0, 1, 2);
+}
+
 void GeneratePyramid(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
@@ -518,6 +550,8 @@ void GenerateFullscreenQuad(
 int main()
 {
     int screen_width {1920}, screen_height {1080};
+    glm::vec2 resolution{screen_width, screen_height};
+
     Renderer renderer {screen_width, screen_height};
 
     std::cout << "Creating shader blinn_phong_shdader_ptr..." << std::endl;
@@ -532,15 +566,20 @@ int main()
     std::cout << "Shader created successfully." << std::endl;
     std::cout << "shadow_map_shdader_ptr id: " << shadow_map_shdader_ptr->ID << std::endl;
 
-    //std::cout << "Creating shader texture_shdader_ptr..." << std::endl;
-    //std::shared_ptr<Shader> texture_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture.vs.glsl", "GameClient/src/Renderer/Shaders/texture.fs.glsl")};
-    //std::cout << "Shader created successfully." << std::endl;
-    //std::cout << "texture_shdader_ptr id: " << texture_shdader_ptr->ID << std::endl;
+    std::cout << "Creating shader screen_texture_shader_ptr..." << std::endl;
+    std::shared_ptr<Shader> screen_texture_shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl")};
+    std::cout << "Shader created successfully." << std::endl;
+    std::cout << "screen_texture_shader_ptr id: " << screen_texture_shader_ptr->ID << std::endl;
     
     std::cout << "Creating shader texture_cubemap_shdader_ptr..." << std::endl;
     std::shared_ptr<Shader> texture_cubemap_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl")};
     std::cout << "Shader created successfully." << std::endl;
     std::cout << "texture_cubemap_shdader_ptr id: " << texture_cubemap_shdader_ptr->ID << std::endl;
+
+    std::cout << "Creating shader water_shdader_ptr..." << std::endl;
+    std::shared_ptr<Shader> water_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/water.vs.glsl", "GameClient/src/Renderer/Shaders/water.fs.glsl")};
+    std::cout << "Shader created successfully." << std::endl;
+    std::cout << "water_shdader_ptr id: " << water_shdader_ptr->ID << std::endl;
 
     std::vector<std::shared_ptr<Model>> models{};
 
@@ -558,7 +597,7 @@ int main()
     float width{50.0f};
     float goal_lenght{20.0f};
     float side_border_lenght{75.0f};
-    float min_size{5.0f};
+    float min_size{3.0f};
     float diagnal_length{CalculateDiagonalLength(
         (width - goal_lenght)/2.0f,
         (lenght - side_border_lenght)/2.0f
@@ -715,24 +754,37 @@ int main()
     floor_ptr->SetMaterial("GameClient/assets/textures/base.png", m_tex_coords);
     floor_ptr->SetShader(blinn_phong_shdader_ptr);
     floor_ptr->initializeForGL();
-    floor_ptr->Translate(glm::vec3(0, -5, 0));
+    floor_ptr->Translate(glm::vec3(0, -min_size/2.0f, 0));
     floor_ptr->RotateY(0.0f);
     floor_ptr->UpdateModelMatrix();
-    models.emplace_back(floor_ptr);
+    //models.emplace_back(floor_ptr);
 
+    /*
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
     m_tex_coords.clear();
-    GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);
+    GenerateXZBase2(m_positions, m_colors, m_indices, m_tex_coords, width/1.5f, lenght/1.5f);
     std::shared_ptr<Model> water_floor_ptr {std::make_shared<Model>()};
     water_floor_ptr->SetGeometry(m_positions, m_indices);
-    water_floor_ptr->SetMaterial("GameClient/assets/textures/base.png", m_tex_coords);
-    water_floor_ptr->SetShader(blinn_phong_shdader_ptr);
+    water_floor_ptr->SetMaterial(m_tex_coords);
+    water_floor_ptr->SetShader(water_shdader_ptr);
     water_floor_ptr->initializeForGL();
-    water_floor_ptr->Translate(glm::vec3(0, -5, 0));
+    water_floor_ptr->Translate(glm::vec3(0, -2, 0));
     water_floor_ptr->RotateY(0.0f);
     water_floor_ptr->UpdateModelMatrix();
+    */
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateFullscreenQuad(m_positions, m_tex_coords, m_indices);
+    std::shared_ptr<Model> fullscreen_quad_ptr {std::make_shared<Model>()};
+    fullscreen_quad_ptr->SetGeometry(m_positions, m_indices);
+    fullscreen_quad_ptr->SetMaterial(m_tex_coords);
+    fullscreen_quad_ptr->SetShader(screen_texture_shader_ptr);
+    fullscreen_quad_ptr->initializeForGL();
+    fullscreen_quad_ptr->UpdateModelMatrix();
     
     std::shared_ptr<Model> handle_ptr {
         ModelLoader::LoadFromFile("GameClient/assets/models/handle.obj", blinn_phong_shdader_ptr)
@@ -754,13 +806,14 @@ int main()
     m_colors.clear();
     m_indices.clear();
     m_tex_coords.clear();
-    GenerateSphere(m_positions, m_colors, m_indices, m_tex_coords, 30, 5);
+    float radius{2.0f};
+    GenerateSphere(m_positions, m_colors, m_indices, m_tex_coords, 16, 2);
     std::shared_ptr<Model> sphere_ptr {std::make_shared<Model>()};
     sphere_ptr->SetGeometry(m_positions, m_indices, true);
     sphere_ptr->SetMaterial("GameClient/assets/textures/ball.png", m_tex_coords);
     sphere_ptr->SetShader(blinn_phong_shdader_ptr);
     sphere_ptr->initializeForGL();
-    sphere_ptr->Translate(glm::vec3(0, 0, 0));
+    sphere_ptr->Translate(glm::vec3(0, radius - min_size/2.0f, 0));
     sphere_ptr->UpdateModelMatrix();
     models.emplace_back(sphere_ptr);
     
@@ -786,6 +839,9 @@ int main()
 
     std::cout << "Entering Render Loop" << std::endl;
 
+    Framebuffer displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, screen_width, screen_height);
+    Framebuffer snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, screen_width, screen_height);
+
     float time{};
     while (!renderer.shouldClose())
     {
@@ -799,6 +855,8 @@ int main()
         }
         pointLight.StopFillingShadowBuffer();
 
+        displayBuffer.Bind();
+
         glDisable(GL_DEPTH_TEST);
         texture_cubemap_shdader_ptr->use();
         glm::mat4 skyboxView = glm::mat4(glm::mat3(renderer.camera.view));
@@ -811,12 +869,46 @@ int main()
         pointLight.EnableShadowTexture();
         blinn_phong_shdader_ptr->setMat4("view", renderer.camera.view);
         blinn_phong_shdader_ptr->setMat4("projection", renderer.camera.proj);
+        blinn_phong_shdader_ptr->setBool("enableReflection", false);
+        blinn_phong_shdader_ptr->setVec3("cameraPosition", renderer.camera.position);
+        blinn_phong_shdader_ptr->setVec2("resolution", resolution);
         pointLight.PassUniformsToRendererShader();
         
         for (const std::shared_ptr<Model>& model_ptr : models)
         {
             model_ptr->draw(blinn_phong_shdader_ptr, false);
         }
+
+        snapshotBuffer.CopyFrom(displayBuffer);
+        displayBuffer.Bind();
+        blinn_phong_shdader_ptr->setInt("skybox", 2);
+        blinn_phong_shdader_ptr->setInt("scene", 3);
+        cube_skybox_ptr->ActivateTextureForOther(GL_TEXTURE2);
+        snapshotBuffer.BindTexture(GL_TEXTURE3);
+        blinn_phong_shdader_ptr->setBool("enableReflection", true);
+        floor_ptr->draw(blinn_phong_shdader_ptr, false);
+        
+        /*
+        snapshotBuffer.CopyFrom(displayBuffer);
+        displayBuffer.Bind();
+        water_shdader_ptr->use();
+        water_shdader_ptr->setInt("skybox", 0);
+        water_shdader_ptr->setInt("scene", 1);
+        cube_skybox_ptr->ActivateTextureForOther(GL_TEXTURE0);
+        snapshotBuffer.BindTexture(GL_TEXTURE1);
+        water_shdader_ptr->setMat4("view", renderer.camera.view);
+        water_shdader_ptr->setMat4("projection", renderer.camera.proj);
+        water_shdader_ptr->setVec3("cameraPosition", renderer.camera.position);
+        water_shdader_ptr->setVec2("resolution", resolution);
+        water_floor_ptr->draw(water_shdader_ptr, false);
+        */
+
+        displayBuffer.Unbind();
+
+        screen_texture_shader_ptr->use();
+        displayBuffer.BindTexture(GL_TEXTURE0);
+        fullscreen_quad_ptr->draw(screen_texture_shader_ptr, false);
+        displayBuffer.ClearBufferForNextDraw();
 
         renderer.render();
     }

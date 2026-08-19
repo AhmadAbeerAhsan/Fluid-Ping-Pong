@@ -32,6 +32,9 @@ out vec3 oVaryingNormal;
 out vec3 oVaryingLightDir;
 out vec3 oVaryingVertPos;
 
+out vec3 oWorldPosition;
+out vec3 oWorldNormal;
+
 out PositionalLight oLight;
 out Material oMaterial;
 
@@ -44,11 +47,14 @@ void main()
     oMaterial = material;
     TexCoord = aTexCoord;
 
+    oWorldPosition = (model * vec4(vVertex, 1.0f)).xyz;
+    oWorldNormal = (model * vec4(vNormal, 0.0f)).xyz;
+    
     //convert vertex to view space
-    vec4 P = view * model * vec4(vVertex, 1.0f);
+    vec4 P = view * vec4(oWorldPosition, 1.0f);
     shadow_coord = light.proj_view * model * vec4(vVertex, 1.0f);
     //normalize normal
-    oVaryingNormal = (view * model * vec4(vNormal, 0.0f)).xyz;
+    oVaryingNormal = (view * vec4(oWorldNormal, 0.0f)).xyz;
     //calculate view space light vector(from vertex to light)
     vec3 lightPosView = (view * vec4(light.position, 1.0f)).xyz;
     oVaryingLightDir = lightPosView - P.xyz;

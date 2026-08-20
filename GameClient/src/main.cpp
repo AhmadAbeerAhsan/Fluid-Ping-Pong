@@ -6,7 +6,11 @@
 #include "Renderer/ModelLoader.hpp"
 #include "Renderer/PointLight.hpp"
 #include "Renderer/Framebuffer.hpp"
+#include "Renderer/Texture.hpp"
 
+
+
+#include <chrono>v
 #include <cmath>
 float CalculateDiagonalLength(float b, float p)
 {
@@ -547,46 +551,204 @@ void GenerateFullscreenQuad(
     }
 }
 
+void GenerateHandle(
+    std::vector<glm::vec3>& m_positions,
+    std::vector<glm::vec3>& m_colors,
+    std::vector<glm::uvec3>& m_indices,
+    std::vector<glm::vec2>& m_tex_coords,
+    float r1,
+    float h1, float h2, float h3,
+    float b1, float b2,
+    int precision,
+    glm::vec3 primary_color,
+    glm::vec3 secondary_color
+)
+{
+    int top_arc_points = precision;
+    int total_rotations = precision * 5;
+
+    float delta_arc_angle{
+        glm::radians(
+            90.0f/(float)(precision - 1)
+        )
+    };
+    float delta_rotaion_angle{
+        glm::radians(
+            360.0f/(float)total_rotations
+        )
+    };
+
+    int first_loop_size{0};
+    //top arc
+    for (size_t i = 0; i < precision; i++)
+    {
+        float delta{(float)i * delta_arc_angle};
+        m_positions.emplace_back(r1*std::sin(delta), r1*std::cos(delta) + h1 + h2, 0.0f);
+        m_tex_coords.emplace_back(0.5f, 0.5f);
+        m_colors.emplace_back(secondary_color);
+        first_loop_size++;  
+    }
+    //arc end till arc end + partial arc end
+    //first_loop_size++;
+    //m_positions.emplace_back(r1, h2 + h1 - 0.2f, 0.0f);
+    //m_tex_coords.emplace_back(0.5f, 0.5f);
+    //m_colors.emplace_back(secondary_color);
+    //arc end till base start
+    first_loop_size++;
+    m_positions.emplace_back(r1, h2, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(secondary_color);
+    //base start till base bottom outer boundary inner side halfway
+    first_loop_size++;
+    m_positions.emplace_back(r1 + b1/2.0f, h2, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(secondary_color);
+    //base bottom outer boundary inner side halfway till base bottom outer boundary inner side
+    first_loop_size++;
+    m_positions.emplace_back(r1 + b1, h2, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(primary_color);
+    //base bottom outer boundary inner side till base top outer boundary inner side
+    first_loop_size++;
+    m_positions.emplace_back(r1 + b1, h2 + h3, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(primary_color);
+    //base top outer boundary inner side till base top outer boundary outer side
+    first_loop_size++;
+    m_positions.emplace_back(r1 + b1 + b2, h2 + h3, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(primary_color);
+    //base top outer boundary outer side till base bottom outer boundary outer side
+    first_loop_size++;
+    m_positions.emplace_back(r1 + b1 + b2, 0.0f, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(primary_color);
+    //base bottom outer boundary outer side till base bottom center
+    first_loop_size++;
+    m_positions.emplace_back(0.0f, 0.0f, 0.0f);
+    m_tex_coords.emplace_back(0.5f, 0.5f);
+    m_colors.emplace_back(primary_color);
+
+    for (size_t i = 1; i <= total_rotations; i++)
+    {
+        float delta{(float)i * delta_rotaion_angle};
+        for (size_t j = 0; j < first_loop_size; j++)
+        {
+            glm::vec3 p = m_positions[j];
+
+            float x = p.x;
+            float y = p.y;
+
+            m_positions.emplace_back(
+                x * std::cos(delta),
+                y,
+                x * std::sin(delta)
+            );
+            m_tex_coords.emplace_back(0.5f, 0.5f);
+            m_colors.emplace_back(m_colors[j]);
+        }
+    }
+
+    unsigned int loop_pairs{(unsigned int)total_rotations};
+    for (unsigned i = 0; i < loop_pairs; i++)
+    {
+        unsigned curr_base{i * first_loop_size};
+        unsigned next_base{curr_base + (first_loop_size)};
+        for (unsigned j = 0; j < first_loop_size - 1; j++)
+        {
+            m_indices.emplace_back(glm::uvec3(
+                curr_base + j,
+                next_base + (j%first_loop_size),
+                (next_base + (j + 1)%first_loop_size)
+            ));
+            m_indices.emplace_back(glm::uvec3(
+                curr_base + j,
+                (next_base + (j + 1)%first_loop_size),
+                (curr_base + (j + 1)%first_loop_size)
+            ));
+        }
+    }
+}
+
 int main()
 {
     int screen_width {1920}, screen_height {1080};
-    glm::vec2 resolution{screen_width, screen_height};
+    std::shared_ptr<glm::ivec2> shared_resolution{std::make_shared<glm::ivec2>(screen_width, screen_height)};
 
-    Renderer renderer {screen_width, screen_height};
+    Renderer renderer {shared_resolution};
+    renderer.UpdateResolutionSubscibedCallbacks.emplace_back(
+        []()
+        {
+            std::cout << "Resolution Changed!" << std::endl;   
+        }
+    );
+
+    Framebuffer displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution);
+    Framebuffer snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution);
+
+    PointLight pointLight{shared_resolution};
+
+    //Create Textures
+    std::shared_ptr<Texture> wall_texture{std::make_shared<Texture>("GameClient/assets/textures/tile.jpg")};
+    std::shared_ptr<Texture> floor_texture{std::make_shared<Texture>("GameClient/assets/textures/base.png")};
+    std::shared_ptr<Texture> ball_texture{std::make_shared<Texture>("GameClient/assets/textures/ball.png")};
+    std::vector<std::string> cubemap_paths{
+        "GameClient/assets/textures/cube_maps/px.png",
+        "GameClient/assets/textures/cube_maps/nx.png",
+        "GameClient/assets/textures/cube_maps/py.png",
+        "GameClient/assets/textures/cube_maps/ny.png",
+        "GameClient/assets/textures/cube_maps/pz.png",
+        "GameClient/assets/textures/cube_maps/nz.png"
+    };
+    std::shared_ptr<Texture> cube_map_texture{std::make_shared<Texture>(cubemap_paths)};
 
     std::cout << "Creating shader blinn_phong_shdader_ptr..." << std::endl;
     std::shared_ptr<Shader> blinn_phong_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/blinn_phong.vs.glsl", "GameClient/src/Renderer/Shaders/blinn_phong.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
-    //blinn_phong_shdader_ptr->setInt("shTex", 1);
-    //blinn_phong_shdader_ptr->setInt("ourTexture", 0);
     std::cout << "blinn_phong_shdader_ptr id: " << blinn_phong_shdader_ptr->ID << std::endl;
+    blinn_phong_shdader_ptr->Activate();
+    blinn_phong_shdader_ptr->setInt("ourTexture", 0);
+    blinn_phong_shdader_ptr->setInt("shTex", 1);
+    blinn_phong_shdader_ptr->setInt("skybox", 2);
+    blinn_phong_shdader_ptr->setInt("scene", 3);
+    blinn_phong_shdader_ptr->PassUniforms = std::function<void()>{
+        [blinn_phong_shdader_ptr, &renderer, &pointLight, shared_resolution, cube_map_texture](){
+            blinn_phong_shdader_ptr->setMat4("view", renderer.camera.view);
+            blinn_phong_shdader_ptr->setMat4("projection", renderer.camera.proj);
+            blinn_phong_shdader_ptr->setVec3("cameraPosition", renderer.camera.position);
+            blinn_phong_shdader_ptr->setVec2("resolution", {(float)shared_resolution->x, (float)shared_resolution->y});
+            pointLight.PassUniformsToRendererShader();
+            pointLight.EnableShadowTexture();
+            cube_map_texture->Use(GL_TEXTURE2);
+        }
+    };
 
     std::cout << "Creating shader shadow_map_shdader_ptr..." << std::endl;
     std::shared_ptr<Shader> shadow_map_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/shadow_map.vs.glsl", "GameClient/src/Renderer/Shaders/shadow_map.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
     std::cout << "shadow_map_shdader_ptr id: " << shadow_map_shdader_ptr->ID << std::endl;
 
     std::cout << "Creating shader screen_texture_shader_ptr..." << std::endl;
     std::shared_ptr<Shader> screen_texture_shader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
     std::cout << "screen_texture_shader_ptr id: " << screen_texture_shader_ptr->ID << std::endl;
-    
+    screen_texture_shader_ptr->PassUniforms = std::function<void()>{
+        [screen_texture_shader_ptr, &displayBuffer](){
+            displayBuffer.BindTexture(GL_TEXTURE0);
+        }
+    };
+
     std::cout << "Creating shader texture_cubemap_shdader_ptr..." << std::endl;
     std::shared_ptr<Shader> texture_cubemap_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
     std::cout << "texture_cubemap_shdader_ptr id: " << texture_cubemap_shdader_ptr->ID << std::endl;
-
-    std::cout << "Creating shader water_shdader_ptr..." << std::endl;
-    std::shared_ptr<Shader> water_shdader_ptr {std::make_shared<Shader>("GameClient/src/Renderer/Shaders/water.vs.glsl", "GameClient/src/Renderer/Shaders/water.fs.glsl")};
-    std::cout << "Shader created successfully." << std::endl;
-    std::cout << "water_shdader_ptr id: " << water_shdader_ptr->ID << std::endl;
+    texture_cubemap_shdader_ptr->PassUniforms = std::function<void()>{
+        [&texture_cubemap_shdader_ptr, &renderer](){
+            texture_cubemap_shdader_ptr->setMat4("view", renderer.camera.skyboxView);
+            texture_cubemap_shdader_ptr->setMat4("projection", renderer.camera.proj);
+        }
+    };
 
     std::vector<std::shared_ptr<Model>> models{};
 
-    PointLight pointLight{(float)screen_width, (float)screen_height};
-    pointLight.AddRenderShader(blinn_phong_shdader_ptr);
-    pointLight.AddShadowMapShader(shadow_map_shdader_ptr);
-    pointLight.SetupShadowBuffers(screen_width, screen_height);
+    pointLight.SetRenderShader(blinn_phong_shdader_ptr);
+    pointLight.SetShadowMapShader(shadow_map_shdader_ptr);
 
     std::vector<glm::vec3> m_positions {};
     std::vector<glm::vec3> m_colors {};
@@ -611,7 +773,7 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, min_size, min_size, side_border_lenght);
     std::shared_ptr<Model> right_border_ptr {std::make_shared<Model>()};
     right_border_ptr->SetGeometry(m_positions, m_indices);
-    right_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    right_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     right_border_ptr->SetShader(blinn_phong_shdader_ptr);
     right_border_ptr->initializeForGL();
     right_border_ptr->Translate(glm::vec3(-1.0f * (width/2.0f + min_size/2.0f), 0, 0));
@@ -625,7 +787,7 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, min_size, min_size, side_border_lenght);
     std::shared_ptr<Model> left_border_ptr {std::make_shared<Model>()};
     left_border_ptr->SetGeometry(m_positions, m_indices);
-    left_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    left_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     left_border_ptr->SetShader(blinn_phong_shdader_ptr);
     left_border_ptr->initializeForGL();
     left_border_ptr->Translate(glm::vec3(1.0f * (width/2.0f + min_size/2.0f), 0, 0));
@@ -643,10 +805,10 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
     std::shared_ptr<Model> bottom_left_border_ptr {std::make_shared<Model>()};
     bottom_left_border_ptr->SetGeometry(m_positions, m_indices);
-    bottom_left_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    bottom_left_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     bottom_left_border_ptr->SetShader(blinn_phong_shdader_ptr);
     bottom_left_border_ptr->initializeForGL();
-    bottom_left_border_ptr->RotateY(-39.806f);
+    bottom_left_border_ptr->RotateY(glm::radians(-39.806f));
     bottom_left_border_ptr->Translate(glm::vec3(goal_lenght/2.0f, 0, -(lenght/2.0f)));
     translation = glm::vec3((width - goal_lenght)/2.0f, 0.0f, (lenght - side_border_lenght)/2.0f);
     translation = translation/2.0f;
@@ -663,10 +825,10 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
     std::shared_ptr<Model> bottom_right_border_ptr {std::make_shared<Model>()};
     bottom_right_border_ptr->SetGeometry(m_positions, m_indices);
-    bottom_right_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    bottom_right_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     bottom_right_border_ptr->SetShader(blinn_phong_shdader_ptr);
     bottom_right_border_ptr->initializeForGL();
-    bottom_right_border_ptr->RotateY(39.806f);
+    bottom_right_border_ptr->RotateY(glm::radians(39.806f));
     bottom_right_border_ptr->Translate(glm::vec3(-goal_lenght/2.0f, 0, -(lenght/2.0f)));
     translation = glm::vec3(-(width - goal_lenght)/2.0f, 0.0f, (lenght - side_border_lenght)/2.0f);
     translation = translation/2.0f;
@@ -676,6 +838,7 @@ int main()
     bottom_right_border_ptr->UpdateModelMatrix();
     models.emplace_back(bottom_right_border_ptr);
 
+    /*
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
@@ -683,13 +846,14 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, goal_lenght, min_size, min_size);
     std::shared_ptr<Model> bottom_goal_border_ptr {std::make_shared<Model>()};
     bottom_goal_border_ptr->SetGeometry(m_positions, m_indices);
-    bottom_goal_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    bottom_goal_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     bottom_goal_border_ptr->SetShader(blinn_phong_shdader_ptr);
     bottom_goal_border_ptr->initializeForGL();
     bottom_goal_border_ptr->Translate(glm::vec3(0, 0, -(lenght + min_size)/2.0f));
     bottom_goal_border_ptr->UpdateModelMatrix();
     models.emplace_back(bottom_goal_border_ptr);
-
+    */
+   
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
@@ -697,10 +861,10 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
     std::shared_ptr<Model> top_left_border_ptr {std::make_shared<Model>()};
     top_left_border_ptr->SetGeometry(m_positions, m_indices);
-    top_left_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    top_left_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     top_left_border_ptr->SetShader(blinn_phong_shdader_ptr);
     top_left_border_ptr->initializeForGL();
-    top_left_border_ptr->RotateY(39.806f);
+    top_left_border_ptr->RotateY(glm::radians(39.806f));
     top_left_border_ptr->Translate(glm::vec3(goal_lenght/2.0f, 0, (lenght/2.0f)));
     translation = glm::vec3((width - goal_lenght)/2.0f, 0.0f, -(lenght - side_border_lenght)/2.0f);
     translation = translation/2.0f;
@@ -717,10 +881,10 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
     std::shared_ptr<Model> top_right_border_ptr {std::make_shared<Model>()};
     top_right_border_ptr->SetGeometry(m_positions, m_indices);
-    top_right_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    top_right_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     top_right_border_ptr->SetShader(blinn_phong_shdader_ptr);
     top_right_border_ptr->initializeForGL();
-    top_right_border_ptr->RotateY(-39.806f);
+    top_right_border_ptr->RotateY(glm::radians(-39.806f));
     top_right_border_ptr->Translate(glm::vec3(-goal_lenght/2.0f, 0, (lenght/2.0f)));
     translation = glm::vec3(-(width - goal_lenght)/2.0f, 0.0f, -(lenght - side_border_lenght)/2.0f);
     translation = translation/2.0f;
@@ -730,6 +894,8 @@ int main()
     top_right_border_ptr->UpdateModelMatrix();
     models.emplace_back(top_right_border_ptr);
 
+    
+    /*
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
@@ -737,12 +903,13 @@ int main()
     GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, goal_lenght, min_size, min_size);
     std::shared_ptr<Model> top_goal_border_ptr {std::make_shared<Model>()};
     top_goal_border_ptr->SetGeometry(m_positions, m_indices);
-    top_goal_border_ptr->SetMaterial("GameClient/assets/textures/tile.jpg", m_tex_coords);
+    top_goal_border_ptr->SetMaterial(wall_texture, m_tex_coords);
     top_goal_border_ptr->SetShader(blinn_phong_shdader_ptr);
     top_goal_border_ptr->initializeForGL();
     top_goal_border_ptr->Translate(glm::vec3(0, 0, (lenght + min_size)/2.0f));
     top_goal_border_ptr->UpdateModelMatrix();
     models.emplace_back(top_goal_border_ptr);
+    */
 
     m_positions.clear();
     m_colors.clear();
@@ -751,7 +918,8 @@ int main()
     GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);
     std::shared_ptr<Model> floor_ptr {std::make_shared<Model>()};
     floor_ptr->SetGeometry(m_positions, m_indices);
-    floor_ptr->SetMaterial("GameClient/assets/textures/base.png", m_tex_coords);
+    floor_ptr->SetMaterial(floor_texture, m_tex_coords);
+    floor_ptr->m_enable_reflection = true;
     floor_ptr->SetShader(blinn_phong_shdader_ptr);
     floor_ptr->initializeForGL();
     floor_ptr->Translate(glm::vec3(0, -min_size/2.0f, 0));
@@ -759,21 +927,6 @@ int main()
     floor_ptr->UpdateModelMatrix();
     //models.emplace_back(floor_ptr);
 
-    /*
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateXZBase2(m_positions, m_colors, m_indices, m_tex_coords, width/1.5f, lenght/1.5f);
-    std::shared_ptr<Model> water_floor_ptr {std::make_shared<Model>()};
-    water_floor_ptr->SetGeometry(m_positions, m_indices);
-    water_floor_ptr->SetMaterial(m_tex_coords);
-    water_floor_ptr->SetShader(water_shdader_ptr);
-    water_floor_ptr->initializeForGL();
-    water_floor_ptr->Translate(glm::vec3(0, -2, 0));
-    water_floor_ptr->RotateY(0.0f);
-    water_floor_ptr->UpdateModelMatrix();
-    */
     m_positions.clear();
     m_colors.clear();
     m_indices.clear();
@@ -785,8 +938,53 @@ int main()
     fullscreen_quad_ptr->SetShader(screen_texture_shader_ptr);
     fullscreen_quad_ptr->initializeForGL();
     fullscreen_quad_ptr->UpdateModelMatrix();
-    
-    std::shared_ptr<Model> handle_ptr {
+
+
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateHandle(
+        m_positions, m_colors, m_indices, m_tex_coords,
+        1.0f,
+        3.0f, 1.0f, 1.0f,
+        2.0f, 0.5f,
+        10,
+        glm::vec3(1.0f, 0.0f, 0.0f),
+        glm::vec3(1.0f, 1.0f, 1.0f)
+    );
+    std::shared_ptr<Model> handle_ptr {std::make_shared<Model>()};
+    handle_ptr->SetGeometry(m_positions, m_indices);
+    handle_ptr->SetMaterial(m_colors);
+    handle_ptr->SetShader(blinn_phong_shdader_ptr);
+    handle_ptr->initializeForGL();
+    handle_ptr->Translate(glm::vec3(0, -min_size/2.0f, 30.0f));
+    handle_ptr->UpdateModelMatrix();
+    models.emplace_back(handle_ptr);
+
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateHandle(
+        m_positions, m_colors, m_indices, m_tex_coords,
+        1.0f,
+        3.0f, 1.0f, 1.0f,
+        2.0f, 0.5f,
+        10,
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        glm::vec3(1.0f, 1.0f, 1.0f)
+    );
+    std::shared_ptr<Model> handle2_ptr {std::make_shared<Model>()};
+    handle2_ptr->SetGeometry(m_positions, m_indices);
+    handle2_ptr->SetMaterial(m_colors);
+    handle2_ptr->SetShader(blinn_phong_shdader_ptr);
+    handle2_ptr->initializeForGL();
+    handle2_ptr->Translate(glm::vec3(0, -min_size/2.0f, -30.0f));
+    handle2_ptr->UpdateModelMatrix();
+    models.emplace_back(handle2_ptr);
+
+    /*std::shared_ptr<Model> handle_ptr {
         ModelLoader::LoadFromFile("GameClient/assets/models/handle.obj", blinn_phong_shdader_ptr)
     };
     if (handle_ptr == nullptr)
@@ -795,12 +993,14 @@ int main()
     }
     else
     {
+        handle_ptr->SetMaterial(std::make_unique<Texture>("GameClient/assets/textures/player1.png"));
+        handle_ptr->initializeForGL();
         handle_ptr->Translate(glm::vec3(-25.0f, 0, -50.0f)); // TODO: adjust to where it should actually sit
         handle_ptr->ScaleDimensionToMaxSize(10.0f, 1);
         handle_ptr->RotateX(-90.0f);
         handle_ptr->UpdateModelMatrix();
         models.emplace_back(handle_ptr);
-    }
+    }*/
 
     m_positions.clear();
     m_colors.clear();
@@ -810,21 +1010,13 @@ int main()
     GenerateSphere(m_positions, m_colors, m_indices, m_tex_coords, 16, 2);
     std::shared_ptr<Model> sphere_ptr {std::make_shared<Model>()};
     sphere_ptr->SetGeometry(m_positions, m_indices, true);
-    sphere_ptr->SetMaterial("GameClient/assets/textures/ball.png", m_tex_coords);
+    sphere_ptr->SetMaterial(ball_texture, m_tex_coords);
     sphere_ptr->SetShader(blinn_phong_shdader_ptr);
     sphere_ptr->initializeForGL();
     sphere_ptr->Translate(glm::vec3(0, radius - min_size/2.0f, 0));
     sphere_ptr->UpdateModelMatrix();
     models.emplace_back(sphere_ptr);
     
-    std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/cube_maps/px.png",
-        "GameClient/assets/textures/cube_maps/nx.png",
-        "GameClient/assets/textures/cube_maps/py.png",
-        "GameClient/assets/textures/cube_maps/ny.png",
-        "GameClient/assets/textures/cube_maps/pz.png",
-        "GameClient/assets/textures/cube_maps/nz.png"
-    };
     std::cout << "Generating cube map" << std::endl;
     m_positions.clear();
     m_colors.clear();
@@ -833,84 +1025,80 @@ int main()
     GenerateSkyboxCube(m_positions, m_tex_coords, m_indices);
     std::shared_ptr<Model> cube_skybox_ptr {std::make_shared<Model>()};
     cube_skybox_ptr->SetGeometry(m_positions, m_indices, false);
-    cube_skybox_ptr->SetMaterial(cubemap_paths, m_tex_coords);
+    cube_skybox_ptr->SetMaterial(cube_map_texture, m_tex_coords);
     cube_skybox_ptr->SetShader(texture_cubemap_shdader_ptr);
     cube_skybox_ptr->initializeForGL();
 
     std::cout << "Entering Render Loop" << std::endl;
 
-    Framebuffer displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, screen_width, screen_height);
-    Framebuffer snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, screen_width, screen_height);
+    renderer.UpdateResolutionSubscibedCallbacks.emplace_back(
+        [&displayBuffer, &snapshotBuffer, &pointLight]() {
+            displayBuffer.Resize();
+            snapshotBuffer.Resize();
+            pointLight.Resize();
+        }
+    );
 
-    float time{};
-    while (!renderer.shouldClose())
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    sphere_ptr->m_send_time = true;
+    sphere_ptr->RotateYToVectorDirection(glm::vec2(-1.0f, 1.0f));
+    
+    
+    try
     {
-        renderer.clear();
-
-        
-        pointLight.StartFillingShadowBuffer();
-        for (const std::shared_ptr<Model>& model_ptr : models)
+        while (!renderer.shouldClose())
         {
-            model_ptr->draw(pointLight.m_shadow_map_shader_ptr, true);
+            sphere_ptr->m_time = std::chrono::duration<float, std::milli>(end - start).count()/10000.0f;
+            //sphere_ptr->RotateY(sphere_ptr->m_time);
+            //sphere_ptr->UpdateModelMatrix();
+            //std::cout << sphere_ptr->m_time << std::endl;
+
+            //start = std::chrono::high_resolution_clock::now();
+            renderer.clear();
+
+            
+            pointLight.StartFillingShadowBuffer();
+            for (const std::shared_ptr<Model>& model_ptr : models)
+            {
+                model_ptr->DrawWithExternalShader(pointLight.m_shadow_map_shader_ptr);
+            }
+            pointLight.StopFillingShadowBuffer();
+
+            displayBuffer.Bind();
+
+            glDisable(GL_DEPTH_TEST);
+            texture_cubemap_shdader_ptr->Activate();
+            texture_cubemap_shdader_ptr->PassUniforms();
+            cube_skybox_ptr->DrawWithExternalShader(texture_cubemap_shdader_ptr);
+            glEnable(GL_DEPTH_TEST);
+
+            blinn_phong_shdader_ptr->Activate();
+            blinn_phong_shdader_ptr->PassUniforms();
+            for (const std::shared_ptr<Model>& model_ptr : models)
+            {
+                model_ptr->DrawWithInternalShader(glm::mat4(1.0f));
+            }
+            snapshotBuffer.CopyFrom(displayBuffer);
+            displayBuffer.Bind();
+            //blinn_phong_shdader_ptr->setInt("skybox", 2);
+            //blinn_phong_shdader_ptr->setInt("scene", 3);
+            snapshotBuffer.BindTexture(GL_TEXTURE3);
+            floor_ptr->DrawWithInternalShader(glm::mat4(1.0f));
+
+            displayBuffer.Unbind();
+            screen_texture_shader_ptr->Activate();
+            screen_texture_shader_ptr->PassUniforms();
+            fullscreen_quad_ptr->DrawWithExternalShader(screen_texture_shader_ptr);
+            displayBuffer.ClearBufferForNextDraw();
+
+            renderer.render();
+            end = std::chrono::high_resolution_clock::now();
         }
-        pointLight.StopFillingShadowBuffer();
-
-        displayBuffer.Bind();
-
-        glDisable(GL_DEPTH_TEST);
-        texture_cubemap_shdader_ptr->use();
-        glm::mat4 skyboxView = glm::mat4(glm::mat3(renderer.camera.view));
-        texture_cubemap_shdader_ptr->setMat4("view", skyboxView);
-        texture_cubemap_shdader_ptr->setMat4("projection", renderer.camera.proj);
-        cube_skybox_ptr->draw(texture_cubemap_shdader_ptr, false);
-        glEnable(GL_DEPTH_TEST);
-
-        blinn_phong_shdader_ptr->use();
-        pointLight.EnableShadowTexture();
-        blinn_phong_shdader_ptr->setMat4("view", renderer.camera.view);
-        blinn_phong_shdader_ptr->setMat4("projection", renderer.camera.proj);
-        blinn_phong_shdader_ptr->setBool("enableReflection", false);
-        blinn_phong_shdader_ptr->setVec3("cameraPosition", renderer.camera.position);
-        blinn_phong_shdader_ptr->setVec2("resolution", resolution);
-        pointLight.PassUniformsToRendererShader();
-        
-        for (const std::shared_ptr<Model>& model_ptr : models)
-        {
-            model_ptr->draw(blinn_phong_shdader_ptr, false);
-        }
-
-        snapshotBuffer.CopyFrom(displayBuffer);
-        displayBuffer.Bind();
-        blinn_phong_shdader_ptr->setInt("skybox", 2);
-        blinn_phong_shdader_ptr->setInt("scene", 3);
-        cube_skybox_ptr->ActivateTextureForOther(GL_TEXTURE2);
-        snapshotBuffer.BindTexture(GL_TEXTURE3);
-        blinn_phong_shdader_ptr->setBool("enableReflection", true);
-        floor_ptr->draw(blinn_phong_shdader_ptr, false);
-        
-        /*
-        snapshotBuffer.CopyFrom(displayBuffer);
-        displayBuffer.Bind();
-        water_shdader_ptr->use();
-        water_shdader_ptr->setInt("skybox", 0);
-        water_shdader_ptr->setInt("scene", 1);
-        cube_skybox_ptr->ActivateTextureForOther(GL_TEXTURE0);
-        snapshotBuffer.BindTexture(GL_TEXTURE1);
-        water_shdader_ptr->setMat4("view", renderer.camera.view);
-        water_shdader_ptr->setMat4("projection", renderer.camera.proj);
-        water_shdader_ptr->setVec3("cameraPosition", renderer.camera.position);
-        water_shdader_ptr->setVec2("resolution", resolution);
-        water_floor_ptr->draw(water_shdader_ptr, false);
-        */
-
-        displayBuffer.Unbind();
-
-        screen_texture_shader_ptr->use();
-        displayBuffer.BindTexture(GL_TEXTURE0);
-        fullscreen_quad_ptr->draw(screen_texture_shader_ptr, false);
-        displayBuffer.ClearBufferForNextDraw();
-
-        renderer.render();
+    }
+    catch(const std::exception& e)
+    {
+        std::cout << e.what() << '\n';
     }
     
     return 0;

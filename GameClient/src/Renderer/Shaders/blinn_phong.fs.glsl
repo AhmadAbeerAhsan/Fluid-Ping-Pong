@@ -10,14 +10,6 @@ struct PositionalLight
     mat4 proj_view;
 };
 
-struct Material
-{
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-    float shininess;
-};
-
 in vec3 oVaryingNormal;
 in vec3 oVaryingLightDir;
 in vec3 oVaryingVertPos;
@@ -25,11 +17,9 @@ in vec3 oVaryingVertPos;
 in vec3 oWorldPosition;
 in vec3 oWorldNormal;
 
-in PositionalLight oLight;
-in Material oMaterial;
-
 in vec2 TexCoord;
 in vec4 shadow_coord;
+in vec3 oColor;
 
 uniform sampler2D ourTexture;   //0
 uniform sampler2DShadow shTex;  //1
@@ -37,9 +27,15 @@ uniform samplerCube skybox;     //2
 uniform sampler2D scene;        //3
 
 uniform bool enableReflection;
+uniform bool useColor;
 uniform vec3 cameraPosition;
 uniform mat4 projection;
 uniform vec2 resolution;
+
+uniform bool send_time;
+uniform float time;
+
+uniform PositionalLight light;
 
 out vec4 FragColor;
 
@@ -59,7 +55,8 @@ void swap(inout float a, inout float b)
 }
 
 const float zThickness = 0.5f;
-const int rayMaxSteps = 100;
+const int rayMaxSteps = 30;
+const float shininess = 51.2f;
 
 bool castScreenspaceRay(vec3 v_start, vec3 v_direction, out HitInfo hitinfo, float max_distance)
 {
@@ -182,7 +179,19 @@ float lookUp(float ox, float oy)
 
 void main()
 {
-    vec4 texture_color = texture(ourTexture, TexCoord);
+    vec2 texture_shift = vec2(0.0f, 0.0f);
+    if(send_time)
+        texture_shift.x += time;
+
+    vec4 material_color;
+    if(useColor)
+    {
+        material_color = vec4(oColor, 1.0f);
+    }
+    else
+    {
+        material_color = texture(ourTexture, (TexCoord + texture_shift));
+    }
 
     vec3 L = normalize(oVaryingLightDir);
     vec3 N = normalize(oVaryingNormal);
@@ -206,11 +215,11 @@ void main()
 
     //float notInShadow = textureProj(shTex, shadow_coord);
     
-    vec3 ambient = ((oLight.global_ambient * texture_color) + (oLight.ambient * texture_color)).xyz;
+    vec3 ambient = ((light.global_ambient * material_color) + (light.ambient * material_color)).xyz;
     FragColor = vec4(ambient, -oVaryingVertPos.z);
 
-    vec3 diffuse = oLight.diffuse.xyz * cosTheta;
-    vec3 specular = oLight.specular.xyz * pow(cosPhi, oMaterial.shininess * 3.0f);
+    vec3 diffuse = light.diffuse.xyz * cosTheta;
+    vec3 specular = light.specular.xyz * pow(cosPhi, shininess * 3.0f);
 
     FragColor += shadow_factor * vec4((diffuse + specular), 0.0f);
 
@@ -241,7 +250,7 @@ void main()
 
 
     float cosTheta2 = max(dot(N, V), 0.0);
-    float F0 = 0.05;
+    float F0 = 0.09;
     float fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta2, 5.0);
 
     FragColor.rgb = mix(FragColor.rgb, reflected_color.rgb, fresnel);

@@ -2,12 +2,14 @@
 
 Camera::Camera(
         glm::vec3 _position, glm::vec3 _target, glm::vec3 _up, glm::vec3 _right,
-        float _screen_width, float _screen_height,
+        std::shared_ptr<glm::ivec2> shared_resolution,
         float _fov, float _near_plane, float _far_plane
 ) :
-    fov(_fov), aspect_ratio(_screen_width/_screen_height), near_z(_near_plane), far_z(_far_plane)
+    m_fov(_fov),
+    m_near_z(_near_plane), m_far_z(_far_plane),
+    m_shared_resolution(shared_resolution)
 {
-    proj = glm::perspective(glm::radians(_fov), (float)_screen_width / (float)_screen_height, _near_plane, _far_plane);
+    proj = glm::perspective(glm::radians(m_fov), (float)m_shared_resolution->x / (float)m_shared_resolution->y, m_near_z, m_far_z);
     position = _position;
     target = _target;
     up = _up;
@@ -17,9 +19,10 @@ Camera::Camera(
         position + target, 
   		up
     );
+    skyboxView = glm::mat4(glm::mat3(view));
 
-    lastX = _screen_width/2;
-    lastY = _screen_height/2;
+    lastX = (float)m_shared_resolution->x/2;
+    lastY = (float)m_shared_resolution->y/2;
 }
 
 void Camera::translate(glm::vec3 translate)
@@ -44,14 +47,14 @@ void Camera::updateView()
         position + target,
         up
     );
+    skyboxView = glm::mat4(glm::mat3(view));
 }
 
 void Camera::setupProjection(const float _fov, const float _aspect_ratio, const float _near, const float _far)
 {
-    fov = _fov;
-    aspect_ratio = _aspect_ratio;
-    near_z = _near;
-    far_z = _far;
+    m_fov = _fov;
+    m_near_z = _near;
+    m_far_z = _far;
     proj = glm::perspective(glm::radians(_fov), _aspect_ratio, _near, _far);
 }
 
@@ -79,29 +82,7 @@ void Camera::processInput(GLFWwindow *&window, float &cameraSpeed)
 void Camera::muouse_callback(GLFWwindow *&window, double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    /*s
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && !zoomedIn)
-    {
-        std::cout << "zoomed in" << std::endl;
-        setupProjection(fov/2, aspect_ratio, near_z, far_z);
-        zoomedIn = true;
-    }
-    else if (zoomedIn)
-    {
-        std::cout << "zoomed out" << std::endl;
-        setupProjection(fov * 2, aspect_ratio, near_z, far_z);
-        zoomedIn = false;
-    }
-    */
-    if (!zoomedIn)
-    {
-        std::cout << "zoomed in" << std::endl;
-        setupProjection(fov/2, aspect_ratio, near_z, far_z);
-        zoomedIn = true;
-    }
-    
+    float ypos = static_cast<float>(yposIn);    
 
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
     {
@@ -145,4 +126,10 @@ void Camera::muouse_callback(GLFWwindow *&window, double xposIn, double yposIn)
     right = glm::normalize(glm::cross(target, glm::vec3(0.0f, 1.0f, 0.0f)));
     up    = glm::normalize(glm::cross(right, target));
     updateView();
+}
+
+void Camera::updatePersprectiveProj()
+{
+    proj = glm::perspective(glm::radians(m_fov), (float)m_shared_resolution->x / (float)m_shared_resolution->y, m_near_z, m_far_z);
+    rotateCamera = false;
 }

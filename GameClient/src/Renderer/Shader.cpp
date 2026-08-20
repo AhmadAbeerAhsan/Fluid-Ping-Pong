@@ -111,7 +111,7 @@ Shader::~Shader()
     glDeleteProgram(ID);
 }
 
-void Shader::use()
+void Shader::Activate()
 {
     glUseProgram(ID);
 }

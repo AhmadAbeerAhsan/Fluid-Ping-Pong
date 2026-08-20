@@ -9,6 +9,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Shader.hpp"
+#include "Framebuffer.hpp"
 
 class PointLight
 {
@@ -16,7 +17,7 @@ private:
     /* data */
 public:
     PointLight(
-        float width, float height,
+        std::shared_ptr<glm::ivec2> shared_resolution,
         glm::vec4 global_ambient = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
         glm::vec4 ambient = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
         glm::vec4 diffusion = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
@@ -24,18 +25,19 @@ public:
         glm::vec3 position = glm::vec3(500.0f, 200.0f, 20.0f)
     );
     
-    void AddRenderShader(std::shared_ptr<Shader> shader_ptr);
-    void AddShadowMapShader(std::shared_ptr<Shader> shader_ptr);
-    void SetupShadowBuffers(float width, float height);
+    void SetRenderShader(std::shared_ptr<Shader> shader_ptr);
     void PassUniformsToRendererShader();
-    void PassUniformsToShadowMapShader();
+    
+    void SetShadowMapShader(std::shared_ptr<Shader> shader_ptr);
 
     void StartFillingShadowBuffer();
     void StopFillingShadowBuffer();
 
     void EnableShadowTexture();
 
-    float m_width, m_height;
+    void Resize();
+
+    std::shared_ptr<glm::ivec2> m_shared_resolution;
 
     glm::vec4 m_global_ambient;
     glm::vec4 m_ambient;
@@ -43,19 +45,20 @@ public:
     glm::vec4 m_specular;
     glm::vec3 m_position;
 
-    std::vector<std::shared_ptr<GLuint>> m_glob_ambi_locs;
-    std::vector<std::shared_ptr<GLuint>> m_ambi_locs;
-    std::vector<std::shared_ptr<GLuint>> m_diff_locs;
-    std::vector<std::shared_ptr<GLuint>> m_spec_locs;
-    std::vector<std::shared_ptr<GLuint>> m_posi_locs;
-    std::vector<std::shared_ptr<GLuint>> m_proj_view_locs;
-    std::vector<std::shared_ptr<Shader>> m_render_shader_ptrs;
+    std::shared_ptr<GLuint> m_glob_ambi_loc;
+    std::shared_ptr<GLuint> m_ambi_loc;
+    std::shared_ptr<GLuint> m_diff_loc;
+    std::shared_ptr<GLuint> m_spec_loc;
+    std::shared_ptr<GLuint> m_posi_loc;
+    std::shared_ptr<GLuint> m_proj_view_loc;
+    std::shared_ptr<Shader> m_render_shader_ptr;
 
     std::shared_ptr<GLuint> m_light_proj_loc;
     std::shared_ptr<GLuint> m_light_view_loc;
     std::shared_ptr<Shader> m_shadow_map_shader_ptr;
 
-    std::shared_ptr<GLuint> m_shadow_tex, m_shadow_buffer;
+    Framebuffer shadowBuffer;
+
     glm::mat4 m_light_view;
     glm::mat4 m_light_proj;
     glm::mat4 m_bias;

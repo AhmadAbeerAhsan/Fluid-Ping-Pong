@@ -13,6 +13,7 @@ class Camera
 public:
     glm::mat4 view;
     glm::mat4 proj;
+    glm::mat4 skyboxView;
 
     glm::vec3 position;
     glm::vec3 target;
@@ -21,7 +22,7 @@ public:
     
     Camera(
         glm::vec3 _position, glm::vec3 _target, glm::vec3 _up, glm::vec3 _right,
-        float _screen_width, float _screen_height,
+        std::shared_ptr<glm::ivec2> shared_resolution,
         float _fov, float _near_plane, float _far_plane
     );
     Camera() = default;
@@ -39,10 +40,13 @@ public:
     void processInput(GLFWwindow* &window, float &cameraSpeed);
     void muouse_callback(GLFWwindow *&window, double xposIn, double yposIn);
 
+    void updatePersprectiveProj();
+
 private:
-    float yaw{}, pitch{}, roll{}, fov{}, aspect_ratio{}, near_z{}, far_z{};
+    float yaw{}, pitch{}, roll{}, m_fov{}, m_near_z{}, m_far_z{};
     float lastX, lastY;
 
+    std::shared_ptr<glm::ivec2> m_shared_resolution;
+
     bool rotateCamera{false};
-    bool zoomedIn{false};
 };

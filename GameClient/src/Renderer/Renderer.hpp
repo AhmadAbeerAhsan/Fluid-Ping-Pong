@@ -10,6 +10,8 @@
 
 #include "Camera.hpp"
 
+#include <iostream>
+
 struct Timer
 {
     float currentTime = 0.0f;
@@ -27,7 +29,7 @@ struct Timer
 class Renderer
 {
     public:
-        Renderer(int _screen_width, int _screen_height);
+        Renderer(std::shared_ptr<glm::ivec2> shared_resolution);
         ~Renderer();
 
         bool shouldClose() { return glfwWindowShouldClose(window); }
@@ -40,8 +42,10 @@ class Renderer
         Timer timer{};
         Camera camera;
 
+        std::vector<std::function<void()>> UpdateResolutionSubscibedCallbacks;
+
     private:
-        int screen_width; int screen_height;
+        std::shared_ptr<glm::ivec2> m_shared_resolution;
         GLFWwindow* window;
 
         void intializeGLFW(int width, int height);

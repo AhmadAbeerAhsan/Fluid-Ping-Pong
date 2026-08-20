@@ -1,20 +1,25 @@
 #include "Renderer.hpp"
 
-Renderer::Renderer(int _screen_width, int _screen_height) :
-    screen_width(_screen_width),
-    screen_height(_screen_height)
+Renderer::Renderer(std::shared_ptr<glm::ivec2> shared_resolution) :
+    m_shared_resolution(shared_resolution),
+    UpdateResolutionSubscibedCallbacks{}
 {
-    intializeGLFW(_screen_width, _screen_height);
+    intializeGLFW(m_shared_resolution->x, m_shared_resolution->y);
 
     camera = Camera(
         glm::vec3(0.0f, 0.0f, -10.0f), 
   		glm::vec3(0.0f, 0.0f, 1.0f), 
   		glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(1.0f, 0.0f, 0.0f),
-        (float)_screen_width,
-        (float)_screen_height,
+        m_shared_resolution,
         45.0f,
         0.01f, 1000.0f
+    );
+
+    UpdateResolutionSubscibedCallbacks.emplace_back(
+        [this]() {
+            camera.updatePersprectiveProj();
+        }
     );
 
     glEnable(GL_DEPTH_TEST);
@@ -98,10 +103,15 @@ void Renderer::framebuffer_size_callback(GLFWwindow *window, int _screen_width, 
 
 void Renderer::onFramebufferResize(int _screen_width, int _screen_height)
 {
-    screen_width = _screen_width;
-    screen_height = _screen_height;
-    glViewport(0, 0, screen_width, screen_height);
+    m_shared_resolution->x = _screen_width;
+    m_shared_resolution->y = _screen_height;
+    glViewport(0, 0, m_shared_resolution->x, m_shared_resolution->y);
     // update projection matrix, aspect ratio, etc. — anything needing 'this'
+    for ( const std::function<void()>& fun : UpdateResolutionSubscibedCallbacks)
+    {
+        fun();
+        // update projection matrix, aspect ratio, etc. — anything needing 'this'
+    }
 }
 
 void Renderer::muouse_callback_static(GLFWwindow *window, double xposIn, double yposIn)

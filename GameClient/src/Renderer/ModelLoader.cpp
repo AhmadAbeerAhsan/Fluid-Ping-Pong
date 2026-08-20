@@ -108,10 +108,12 @@ std::shared_ptr<Model> ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* sce
 
     if (!diffuse_path.empty() && has_tex_coords)
     {
-        model_ptr->SetMaterial(diffuse_path.c_str(), tex_coords);
+        //model_ptr->SetMaterial(diffuse_path.c_str(), tex_coords);
+        std::cout << "texture found" << std::endl;
     }
     else if (has_vertex_colors)
     {
+        std::cout << "texture not found" << std::endl;
         model_ptr->SetMaterial(colors);
     }
     else
@@ -119,6 +121,7 @@ std::shared_ptr<Model> ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* sce
         // No image texture and no per-vertex colors -- fall back to the
         // material's flat diffuse color (Kd in the .mtl) if there is one,
         // otherwise mid-grey.
+        std::cout << "texture not found" << std::endl;
         aiColor3D diffuse_color(0.7f, 0.7f, 0.7f);
         if (material != nullptr)
         {
@@ -129,7 +132,7 @@ std::shared_ptr<Model> ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* sce
     }
 
     model_ptr->SetShader(shader_ptr);
-    model_ptr->initializeForGL();
+    //model_ptr->initializeForGL();
 
     return model_ptr;
 }
@@ -146,7 +149,7 @@ std::string ModelLoader::ResolveTexturePath(const aiMaterial* material, const st
     {
         return "";
     }
-
+    std::cout << "texture founf" << std::endl;
     return directory + rel_path.C_Str();
 }
 
@@ -156,6 +159,6 @@ std::shared_ptr<Model> ModelLoader::MakeEmptyParent(const std::shared_ptr<Shader
     parent_ptr->SetGeometry({glm::vec3(0.0f)}, {});
     parent_ptr->SetMaterial(std::vector<glm::vec3>{glm::vec3(1.0f)});
     parent_ptr->SetShader(shader_ptr);
-    parent_ptr->initializeForGL();
+    //parent_ptr->initializeForGL();
     return parent_ptr;
 }

@@ -3,6 +3,7 @@
 layout (location = 0) in vec3 vVertex;
 layout (location = 1) in vec3 vNormal;
 layout (location = 2) in vec2 aTexCoord;
+layout (location = 3) in vec3 aColor;
 
 struct PositionalLight
 {
@@ -14,19 +15,10 @@ struct PositionalLight
     mat4 proj_view;
 };
 
-struct Material
-{
-    vec4 ambient;
-    vec4 diffuse;
-    vec4 specular;
-    float shininess;
-};
-
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform PositionalLight light;
-uniform Material material;
 
 out vec3 oVaryingNormal;
 out vec3 oVaryingLightDir;
@@ -35,16 +27,12 @@ out vec3 oVaryingVertPos;
 out vec3 oWorldPosition;
 out vec3 oWorldNormal;
 
-out PositionalLight oLight;
-out Material oMaterial;
-
 out vec2 TexCoord;
 out vec4 shadow_coord;
+out vec3 oColor;
 
 void main()
 {
-    oLight = light;
-    oMaterial = material;
     TexCoord = aTexCoord;
 
     oWorldPosition = (model * vec4(vVertex, 1.0f)).xyz;
@@ -61,6 +49,6 @@ void main()
 
     //view vector is equilvalent to the negative of view space vertex position
     oVaryingVertPos = -P.xyz;
-
+    oColor = aColor;
     gl_Position = projection * P;
 };

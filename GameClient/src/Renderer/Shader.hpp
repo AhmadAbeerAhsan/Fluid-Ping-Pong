@@ -10,6 +10,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <map>
+#include <functional>
+
 
 class Shader
 {
@@ -22,7 +24,8 @@ public:
     Shader(const Shader&) = delete;
     Shader& operator=(const Shader&) = delete;
 
-    void use();
+    void Activate();
+    std::function<void()> PassUniforms;
 
     // utility uniform functions
     void setBool(const std::string &name, bool value) const;

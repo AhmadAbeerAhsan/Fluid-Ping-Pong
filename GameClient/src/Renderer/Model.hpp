@@ -56,8 +56,8 @@ class Model
 {
 public:
     Model();
-    Model(const Model&) = delete;
-    Model& operator=(const Model&) = delete;
+    //Model(const Model&) = delete;
+    //Model& operator=(const Model&) = delete;
     Model(Model&&) = default;
 
     void SetShader(Shader shader_ptr);

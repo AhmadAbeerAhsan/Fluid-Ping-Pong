@@ -7,7 +7,13 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
-void GenerateCube(
+
+inline float CalculateDiagonalLength(float b, float p)
+{
+    return std::sqrt(b * b + p * p);
+}
+
+inline void GenerateCube(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices
@@ -47,7 +53,7 @@ void GenerateCube(
     m_indices.emplace_back(glm::uvec3(4,5,1));
 }
 
-void GenerateRectanle(
+inline void GenerateRectanle(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices,
@@ -88,7 +94,7 @@ void GenerateRectanle(
     m_indices.emplace_back(glm::uvec3(4,5,1));
 }
 
-void GenerateTexturedRectanle(
+inline void GenerateTexturedRectanle(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec2>& m_tex_coords,
     std::vector<glm::uvec3>& m_indices,
@@ -168,7 +174,7 @@ void GenerateTexturedRectanle(
     };
 }
 
-void GenerateXZBase(
+inline void GenerateXZBase(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices,
@@ -255,7 +261,7 @@ void GenerateXZBase(
     */
 }
 
-void GenerateXZBase2(
+inline void GenerateXZBase2(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices,
@@ -287,7 +293,7 @@ void GenerateXZBase2(
     m_indices.emplace_back(0, 1, 2);
 }
 
-void GeneratePyramid(
+inline void GeneratePyramid(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices
@@ -314,7 +320,7 @@ void GeneratePyramid(
     m_indices.emplace_back(glm::uvec3(1,4,3));
 }
 
-void GenerateSphere(
+inline void GenerateSphere(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices,
@@ -449,7 +455,7 @@ void GenerateSphere(
     */
 }
 
-void GenerateSkyboxCube(
+inline void GenerateSkyboxCube(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec2>& m_tex_coords,
     std::vector<glm::uvec3>& m_indices
@@ -516,32 +522,7 @@ void GenerateSkyboxCube(
     }
 }
 
-void GenerateFullscreenQuad(
-    std::vector<glm::vec3>& m_positions,
-    std::vector<glm::vec2>& m_tex_coords,
-    std::vector<glm::uvec3>& m_indices
-)
-{
-    m_positions = {
-        {-1.0f,  1.0f, 0.0f}, {-1.0f, -1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f},
-        {-1.0f,  1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f}, { 1.0f,  1.0f, 0.0f}
-    };
-
-    m_tex_coords = {
-        {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
-        {0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}
-    };
-
-    // No sharing between triangles, so indices are just a trivial
-    // sequential grouping of the array above into (0,1,2), (3,4,5).
-    m_indices.reserve(m_positions.size() / 3);
-    for (unsigned int i = 0; i < m_positions.size(); i += 3)
-    {
-        m_indices.emplace_back(i, i + 1, i + 2);
-    }
-}
-
-void GenerateHandle(
+inline void GenerateHandle(
     std::vector<glm::vec3>& m_positions,
     std::vector<glm::vec3>& m_colors,
     std::vector<glm::uvec3>& m_indices,
@@ -657,5 +638,30 @@ void GenerateHandle(
                 (curr_base + (j + 1)%first_loop_size)
             ));
         }
+    }
+}
+
+inline void GenerateFullscreenQuad(
+    std::vector<glm::vec3>& m_positions,
+    std::vector<glm::vec2>& m_tex_coords,
+    std::vector<glm::uvec3>& m_indices
+)
+{
+    m_positions = {
+        {-1.0f,  1.0f, 0.0f}, {-1.0f, -1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f},
+        {-1.0f,  1.0f, 0.0f}, { 1.0f, -1.0f, 0.0f}, { 1.0f,  1.0f, 0.0f}
+    };
+
+    m_tex_coords = {
+        {0.0f, 1.0f}, {0.0f, 0.0f}, {1.0f, 0.0f},
+        {0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}
+    };
+
+    // No sharing between triangles, so indices are just a trivial
+    // sequential grouping of the array above into (0,1,2), (3,4,5).
+    m_indices.reserve(m_positions.size() / 3);
+    for (unsigned int i = 0; i < m_positions.size(); i += 3)
+    {
+        m_indices.emplace_back(i, i + 1, i + 2);
     }
 }

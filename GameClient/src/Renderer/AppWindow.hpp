@@ -31,8 +31,7 @@ public:
 
     bool shouldClose() { return glfwWindowShouldClose(*m_window_ptr); }
 
-
-    std::vector<std::function<void()>> UpdateResolutionSubscibedCallbacks;
-    std::vector<std::function<void(GLFWwindow*, double, double)>> MouseMovedCallbacks;
-    std::vector<std::function<void(GLFWwindow*)>> KeyPressedCallbacks;
+    std::function<void()> UpdateResolutionSubscibedCallback;
+    std::function<void(GLFWwindow*, double, double)> MouseMovedCallback;
+    std::function<void(GLFWwindow*)> KeyPressedCallback;
 };

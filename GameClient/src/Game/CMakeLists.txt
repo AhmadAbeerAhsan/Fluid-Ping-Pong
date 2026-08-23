@@ -4,6 +4,8 @@ add_library(
     Controller.cpp
     CollisionEngine.cpp
     Match.cpp
+    GameScreen.cpp
+    HomeScreen.cpp
 )
 
 target_link_libraries(Game

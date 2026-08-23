@@ -46,10 +46,7 @@ void AppWindow::RecordEvents()
 
 void AppWindow::ProcessEvents()
 {
-    for ( const std::function<void(GLFWwindow*)>& fun : KeyPressedCallbacks)
-    {
-        fun(*m_window_ptr);
-    }
+    KeyPressedCallback(*m_window_ptr);
 }
 
 void AppWindow::Display()
@@ -71,11 +68,8 @@ void AppWindow::onFramebufferResize(int _screen_width, int _screen_height)
     m_shared_resolution->y = _screen_height;
     glViewport(0, 0, m_shared_resolution->x, m_shared_resolution->y);
 
-    for ( const std::function<void()>& fun : UpdateResolutionSubscibedCallbacks)
-    {
-        fun();
-        // update projection matrix, aspect ratio, etc. — anything needing 'this'
-    }
+    UpdateResolutionSubscibedCallback();
+
 }
 
 void AppWindow::muouse_callback_static(GLFWwindow *window, double xposIn, double yposIn)
@@ -88,8 +82,5 @@ void AppWindow::muouse_callback_static(GLFWwindow *window, double xposIn, double
 
 void AppWindow::muouse_callback(double xposIn, double yposIn)
 {
-    for ( const std::function<void(GLFWwindow*, double, double)>& fun : MouseMovedCallbacks)
-    {
-        fun(*m_window_ptr, xposIn, yposIn);
-    }
+    MouseMovedCallback(*m_window_ptr, xposIn, yposIn);
 }

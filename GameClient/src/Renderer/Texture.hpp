@@ -14,12 +14,20 @@
 class Texture
 {
 private:
-    std::unique_ptr<GLuint> m_texture_id;
+    std::shared_ptr<GLuint> m_texture_id;
+
+    enum TextureType
+    {
+        None,
+        TwoD,
+        ThreeD
+    };
+    TextureType m_texture_type{TextureType::None};
 
 public:
+    Texture();
     Texture(const char* path);
     Texture(std::vector<std::string> paths);
 
-    std::function<void(int)> Use;
+    void Use(int gl_texPos) const;
 };
-

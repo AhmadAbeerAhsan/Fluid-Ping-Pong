@@ -11,18 +11,17 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <map>
 #include <functional>
-
+#include <memory>
 
 class Shader
 {
 public:
-    GLuint ID{};
+    std::shared_ptr<GLuint> ID;
 
     Shader(const char* vertexPath, const char* fragmentPath);
     Shader() = default;
-    ~Shader();
-    Shader(const Shader&) = delete;
-    Shader& operator=(const Shader&) = delete;
+    Shader(const Shader&) = default;
+    Shader& operator=(const Shader&) = default;
 
     void Activate();
     std::function<void()> PassUniforms;
@@ -37,6 +36,8 @@ public:
 
     void addAttribute(std::string attribute);
     void addUniform(std::string uniform);
+
+    GLint GetUniformLocation(const std::string& uniform);
 
 private:
     std::map<std::string, int> attributes{};

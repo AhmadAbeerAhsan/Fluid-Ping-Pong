@@ -1,4 +1,5 @@
 add_subdirectory(src/Renderer)
+add_subdirectory(src/Game)
 
 add_executable(
     GameClient
@@ -16,6 +17,7 @@ target_link_libraries(GameClient
     assimp
     ClientServerContract
     Renderer
+    Game
 )
 
 # Linux extra OpenGL libraries

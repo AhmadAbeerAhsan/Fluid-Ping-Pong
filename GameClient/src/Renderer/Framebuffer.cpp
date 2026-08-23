@@ -1,9 +1,9 @@
 #include "Framebuffer.hpp"
 
 Framebuffer::Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2> shared_resolution) :
-    m_fbo_id{std::make_unique<GLuint>()},
-    m_texture_id{std::make_unique<GLuint>()},
-    m_rbo_id{std::make_unique<GLuint>()},
+    m_fbo_id{new GLuint(0)},
+    m_texture_id{new GLuint(0)},
+    m_rbo_id{new GLuint(0)},
     m_shared_resolution(shared_resolution),
     m_type{framebufferType}
 {

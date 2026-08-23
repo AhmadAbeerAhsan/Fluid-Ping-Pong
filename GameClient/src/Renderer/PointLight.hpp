@@ -25,10 +25,10 @@ public:
         glm::vec3 position = glm::vec3(500.0f, 200.0f, 20.0f)
     );
     
-    void SetRenderShader(std::shared_ptr<Shader> shader_ptr);
+    void SetRenderShader(Shader shader);
     void PassUniformsToRendererShader();
     
-    void SetShadowMapShader(std::shared_ptr<Shader> shader_ptr);
+    void SetShadowMapShader(Shader shader);
 
     void StartFillingShadowBuffer();
     void StopFillingShadowBuffer();
@@ -45,17 +45,17 @@ public:
     glm::vec4 m_specular;
     glm::vec3 m_position;
 
-    std::shared_ptr<GLuint> m_glob_ambi_loc;
-    std::shared_ptr<GLuint> m_ambi_loc;
-    std::shared_ptr<GLuint> m_diff_loc;
-    std::shared_ptr<GLuint> m_spec_loc;
-    std::shared_ptr<GLuint> m_posi_loc;
-    std::shared_ptr<GLuint> m_proj_view_loc;
-    std::shared_ptr<Shader> m_render_shader_ptr;
+    GLint m_glob_ambi_loc;
+    GLint m_ambi_loc;
+    GLint m_diff_loc;
+    GLint m_spec_loc;
+    GLint m_posi_loc;
+    GLint m_proj_view_loc;
+    Shader m_render_shader;
 
-    std::shared_ptr<GLuint> m_light_proj_loc;
-    std::shared_ptr<GLuint> m_light_view_loc;
-    std::shared_ptr<Shader> m_shadow_map_shader_ptr;
+    GLint m_light_proj_loc;
+    GLint m_light_view_loc;
+    Shader m_shadow_map_shader;
 
     Framebuffer shadowBuffer;
 

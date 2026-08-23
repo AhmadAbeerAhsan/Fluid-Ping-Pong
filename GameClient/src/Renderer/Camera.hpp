@@ -37,8 +37,8 @@ public:
     void setupProjection(const float _fov, const float _aspect_ratio, const float _near = 0.1f, const float _far = 1000.0f);
     void Rotate(const float _yaw, const float _pitch, const float _roll);
 
-    void processInput(GLFWwindow* &window, float &cameraSpeed);
-    void muouse_callback(GLFWwindow *&window, double xposIn, double yposIn);
+    void processInput(GLFWwindow* window);
+    void muouse_callback(GLFWwindow*, double xposIn, double yposIn);
 
     void updatePersprectiveProj();
 

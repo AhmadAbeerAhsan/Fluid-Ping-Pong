@@ -5,10 +5,10 @@ add_library(
     Model.cpp
     Renderer.cpp
     Texture.cpp
-    ModelLoader.cpp
     ObjectMaterial.cpp
     PointLight.cpp
     Framebuffer.cpp
+    AppWindow.cpp
 )
 
 target_include_directories(Renderer PUBLIC

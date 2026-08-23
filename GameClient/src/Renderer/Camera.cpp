@@ -62,11 +62,12 @@ void Camera::Rotate(const float _yaw, const float _pitch, const float _roll)
 {
 }
 
-void Camera::processInput(GLFWwindow *&window, float &cameraSpeed)
+void Camera::processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    float cameraSpeed{1.0f};
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         translate(cameraSpeed * target);   
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -79,7 +80,7 @@ void Camera::processInput(GLFWwindow *&window, float &cameraSpeed)
     updateView();
 }
 
-void Camera::muouse_callback(GLFWwindow *&window, double xposIn, double yposIn)
+void Camera::muouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);    

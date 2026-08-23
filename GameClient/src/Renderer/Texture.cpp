@@ -1,8 +1,19 @@
 #include "Texture.hpp"
 
-Texture::Texture(const char* path)
+Texture::Texture()
 {
-    m_texture_id = std::make_unique<GLuint>();
+}
+
+Texture::Texture(const char *path)
+{
+    m_texture_id = std::shared_ptr<GLuint>(
+        new GLuint(0),
+        [](GLuint* id){
+            std::cout << "glDeleteTextures(1, id): " << *id << std::endl;
+            glDeleteTextures(1, id);
+            delete id;
+        }
+    );
     stbi_set_flip_vertically_on_load(true);
     std::string paths{path};
 
@@ -42,12 +53,7 @@ Texture::Texture(const char* path)
     
     stbi_image_free(data);
 
-    Use = std::function<void(int)>{
-        [this](int gl_texPos){
-            glActiveTexture(gl_texPos);
-            glBindTexture(GL_TEXTURE_2D, *m_texture_id);
-        }
-    };
+    m_texture_type = TextureType::TwoD;
 }
 
 Texture::Texture(std::vector<std::string> paths)
@@ -59,7 +65,14 @@ Texture::Texture(std::vector<std::string> paths)
         std::cout << "Texture::Texture(std::vector<std::string> paths): (paths.size() != 6)" << std::endl;
     }
     
-    m_texture_id = std::make_unique<GLuint>();
+    m_texture_id = std::shared_ptr<GLuint>(
+        new GLuint(0),
+        [](GLuint* id){
+            std::cout << "glDeleteTextures(1, id): " << *id << std::endl;
+            glDeleteTextures(1, id);
+            delete id;
+        }
+    );
     stbi_set_flip_vertically_on_load(false);
 
     glGenTextures(1, m_texture_id.get());
@@ -102,12 +115,24 @@ Texture::Texture(std::vector<std::string> paths)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     
-    Use = std::function<void(int)>{
-        [this](int gl_texPos){
-            glActiveTexture(gl_texPos);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, *m_texture_id);
-        }
-    };
+    m_texture_type = TextureType::ThreeD;
 
     std::cout << "Texture::Texture(std::vector<std::string> paths): exited" << std::endl;
+}
+
+void Texture::Use(int gl_texPos) const
+{
+    switch (m_texture_type)
+    {
+    case TextureType::TwoD:
+        glActiveTexture(gl_texPos);
+        glBindTexture(GL_TEXTURE_2D, *m_texture_id);
+        break;
+    case TextureType::ThreeD:
+        glActiveTexture(gl_texPos);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, *m_texture_id);
+        break;
+    default:
+        break;
+    }
 }

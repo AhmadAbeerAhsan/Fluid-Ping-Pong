@@ -11,6 +11,58 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+struct FramebufferDeleter
+{
+    void operator()(GLuint* id) const noexcept
+    {
+        if (id)
+        {
+            if (*id != 0)
+            {
+                std::cout << "glDeleteFramebuffers(1, id): " << *id << std::endl;
+                glDeleteFramebuffers(1, id);
+            }
+            delete id;
+        }
+    }
+};
+ 
+struct TextureDeleter
+{
+    void operator()(GLuint* id) const noexcept
+    {
+        if (id)
+        {
+            if (*id != 0)
+            {
+                std::cout << "glDeleteTextures(1, id): " << *id << std::endl;
+                glDeleteTextures(1, id);
+            }
+            delete id;
+        }
+    }
+};
+ 
+struct RenderbufferDeleter
+{
+    void operator()(GLuint* id) const noexcept
+    {
+        if (id)
+        {
+            if (*id != 0)
+            {
+                std::cout << "glDeleteRenderbuffers(1, id): " << *id << std::endl;
+                glDeleteRenderbuffers(1, id);
+            }
+            delete id;
+        }
+    }
+};
+ 
+using FramebufferUniquePtr  = std::unique_ptr<GLuint, FramebufferDeleter>;
+using TextureUniquePtr      = std::unique_ptr<GLuint, TextureDeleter>;
+using RenderbufferUniquePtr = std::unique_ptr<GLuint, RenderbufferDeleter>;
+
 class Framebuffer
 {
 public:
@@ -25,7 +77,13 @@ public:
     };
 
 private:
-    /* data */
+    FramebufferUniquePtr m_fbo_id;
+    TextureUniquePtr m_texture_id;
+    RenderbufferUniquePtr m_rbo_id;
+
+    std::shared_ptr<glm::ivec2> m_shared_resolution;
+    FrameBufferType m_type;
+    GLbitfield m_copyMask;
 public:
     Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2> shared_resolution);
 
@@ -37,13 +95,4 @@ public:
     void CopyFrom(const Framebuffer &source);
     void ClearBufferForNextDraw();
     void Resize();
-
-    std::unique_ptr<GLuint> m_fbo_id;
-    std::unique_ptr<GLuint> m_texture_id;
-    std::unique_ptr<GLuint> m_rbo_id;
-
-    std::shared_ptr<glm::ivec2> m_shared_resolution;
-    FrameBufferType m_type;
-    GLbitfield m_copyMask;
-    
 };

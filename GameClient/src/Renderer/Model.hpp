@@ -17,23 +17,57 @@
 #include "Texture.hpp"
 #include "ObjectMaterial.hpp"
 
+struct VertexArrayDeleter
+{
+    void operator()(GLuint* id) const noexcept
+    {
+        if (id)
+        {
+            if (*id != 0)
+            {
+                std::cout << "glDeleteVertexArrays(1, id): " << *id << std::endl;
+                glDeleteVertexArrays(1, id);
+            }
+            delete id;
+        }
+    }
+};
+ 
+struct BufferDeleter
+{
+    void operator()(GLuint* id) const noexcept
+    {
+        if (id)
+        {
+            if (*id != 0)
+            {
+                std::cout << "glDeleteBuffers(1, id): " << *id << std::endl;
+                glDeleteBuffers(1, id);
+            }
+            delete id;
+        }
+    }
+};
+ 
+using VertexArrayUniquePtr = std::unique_ptr<GLuint, VertexArrayDeleter>;
+using BufferUniquePtr      = std::unique_ptr<GLuint, BufferDeleter>;
+
 class Model
 {
 public:
     Model();
-
-    ~Model();
+    Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
+    Model(Model&&) = default;
 
-    void SetShader(std::shared_ptr<Shader> shader_ptr);
+    void SetShader(Shader shader_ptr);
     void SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices, bool is_circle = false);
-    void SetMaterial(std::shared_ptr<Texture> texture, std::vector<glm::vec2> texCoords);
+    void SetMaterial(Texture texture, std::vector<glm::vec2> texCoords);
     void SetMaterial(std::vector<glm::vec2> texCoords);
     void SetMaterial(std::vector<glm::vec3> colors);
     void SetMaterial(glm::vec3 color);
-    void SetMaterial(std::shared_ptr<Texture> texture_ptr);
+    void SetMaterial(Texture texture);
 
-    void SetMaterial(std::vector<std::string> paths, std::vector<glm::vec2> texCoords);
     void ActivateTextureForOther(int gl_texPos);
 
     void UpdateModelMatrix();
@@ -55,19 +89,19 @@ public:
     std::vector<glm::vec3> m_colors {};
     std::vector<glm::uvec3> m_indices {};
 
-    std::shared_ptr<Shader> m_shader_ptr;
+    Shader m_shader;
     glm::vec3 m_model_positions;
     glm::vec3 m_model_rotations;
     glm::vec3 m_model_scales;
     glm::mat4 m_model;
     glm::mat4 m_temp_model;
 
-    std::unique_ptr<GLuint> vao_id;
-    std::unique_ptr<GLuint> vbo_positions_id;
-    std::unique_ptr<GLuint> vbo_normals_id;
-    std::unique_ptr<GLuint> vbo_material_id;
-    std::unique_ptr<GLuint> vbo_indices;
-    std::shared_ptr<Texture> m_texture;
+    VertexArrayUniquePtr vao_id;
+    BufferUniquePtr vbo_positions_id;
+    BufferUniquePtr vbo_normals_id;
+    BufferUniquePtr vbo_material_id;
+    BufferUniquePtr vbo_indices;
+    Texture m_texture;
 
     std::vector<std::shared_ptr<Model>> Children;
 
@@ -79,14 +113,11 @@ public:
     glm::vec2 m_dir{0.0f, 1.0f};
 
     void initializeForGL();
-    void DrawWithExternalShader(std::shared_ptr<Shader> shader_ptr, const glm::mat4& parent_model = glm::mat4(1.0f));
-    std::function<void(const glm::mat4&)> DrawWithInternalShader;
+    void DrawWithExternalShader(Shader shader, const glm::mat4& parent_model = glm::mat4(1.0f));
+    void DrawWithInternalShader(const glm::mat4& parent_model = glm::mat4(1.0f));
 
 private:
-    std::function<void()> initMaterial;
-    std::function<void()> initIndices;
-    std::function<void(int)> useTexture;
-    std::function<void()> drawVertices;
+    bool m_use_indices{false};
 
     void ComputeNormals(bool is_circle);
 

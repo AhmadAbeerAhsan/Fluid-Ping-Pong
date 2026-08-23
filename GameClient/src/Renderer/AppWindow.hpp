@@ -34,4 +34,8 @@ public:
     std::function<void()> UpdateResolutionSubscibedCallback;
     std::function<void(GLFWwindow*, double, double)> MouseMovedCallback;
     std::function<void(GLFWwindow*)> KeyPressedCallback;
+
+    GLFWwindow* GetWindowPtr(){
+        return *m_window_ptr.get();
+    }
 };

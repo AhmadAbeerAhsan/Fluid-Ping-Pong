@@ -12,6 +12,8 @@
 #include "Game/Match.hpp"
 #include "Game/HomeScreen.hpp"
 
+#include "UI/UI.hpp"
+
 #include <chrono>
 
 int main()
@@ -20,6 +22,7 @@ int main()
     std::shared_ptr<glm::ivec2> shared_resolution{std::make_shared<glm::ivec2>(screen_width, screen_height)};
 
     AppWindow appWindow{shared_resolution};
+    UI ui{appWindow.GetWindowPtr()};
 
     std::shared_ptr<GameScreen> screen{std::make_shared<HomeScreen>(
         shared_resolution,
@@ -72,6 +75,7 @@ int main()
 
             //start = std::chrono::high_resolution_clock::now();
             appWindow.ProcessEvents();
+            ui.SetupUI();
             
             screen->DrawScene();
             
@@ -80,6 +84,7 @@ int main()
             fullscreen_quad.DrawWithExternalShader(m_screen_texture_shader);
             screen->ClearScene();
 
+            ui.RenderUI();
             appWindow.Display();
             appWindow.RecordEvents();
         }

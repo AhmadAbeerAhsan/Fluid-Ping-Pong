@@ -1,11 +1,8 @@
 add_library(
     UI
-    
-)
-
-target_include_directories(UI PUBLIC
+    UI.cpp
 )
 
 target_link_libraries(UI
-    
+    imgui    
 )

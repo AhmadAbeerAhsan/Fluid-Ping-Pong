@@ -23,7 +23,7 @@ UI::UI(GLFWwindow *window)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     m_io_ptr = &ImGui::GetIO();
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    m_io_ptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
 
@@ -37,8 +37,6 @@ void UI::SetupUI()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-
-    CraftUI();
 }
 
 void UI::RenderUI()

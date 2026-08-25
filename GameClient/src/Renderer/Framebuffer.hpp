@@ -85,7 +85,7 @@ private:
     FrameBufferType m_type;
     GLbitfield m_copyMask;
 public:
-    Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2> shared_resolution);
+    Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2>& shared_resolution);
 
     void Bind();
     void Unbind();

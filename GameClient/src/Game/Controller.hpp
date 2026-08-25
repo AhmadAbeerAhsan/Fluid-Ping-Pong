@@ -8,6 +8,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Boundary.hpp"
+#include "../UI/UI.hpp"
 
 class Controller
 {
@@ -28,7 +29,7 @@ public:
     Controller(ControllerType controller_type);
     ~Controller();
 
-    std::function<void(GLFWwindow*)> ListenInput;
+    std::function<void()> ListenInput;
 
     void AssignBoundary(std::shared_ptr<Boundary> boundary_ptr);
 

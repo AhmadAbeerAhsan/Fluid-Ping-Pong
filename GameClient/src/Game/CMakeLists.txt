@@ -6,10 +6,13 @@ add_library(
     Match.cpp
     GameScreen.cpp
     HomeScreen.cpp
+    BoundaryCircle.cpp
+    BoundaryLine.cpp
 )
 
 target_link_libraries(Game
     glfw
     glm
     Renderer
+    UI
 )

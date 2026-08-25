@@ -1,14 +1,25 @@
 #include "GameScreen.hpp"
 
-GameScreen::GameScreen(std::shared_ptr<glm::ivec2> shared_resolution) :
-    m_shared_resolution(shared_resolution),
+GameScreen::GameScreen(
+        std::shared_ptr<glm::ivec2>& shared_resolution,
+        std::shared_ptr<UI>& ui_ptr
+    ) :
     m_displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution)
 {
+    m_shared_resolution = shared_resolution;
+    m_ui_ptr = ui_ptr;
 }
 
 GameScreen::~GameScreen()
 {
     std::cout << "GameScreen::~GameScreen()" << std::endl;
+}
+
+void GameScreen::SetupUI()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 }
 
 void GameScreen::UseScenceAsTexture()
@@ -24,14 +35,4 @@ void GameScreen::ClearScene()
 void GameScreen::OnChangeResolution()
 {
     m_displayBuffer.Resize();
-}
-
-void GameScreen::OnMouseMoved(GLFWwindow *window_ptr, double xposIn, double yposIn)
-{
-    std::cout << "GameScreen::OnMouseMoved" << std::endl;
-}
-
-void GameScreen::OnKeyPressed(GLFWwindow *window_ptr)
-{
-    std::cout << "GameScreen::OnKeyPressed" << std::endl;
 }

@@ -1,12 +1,12 @@
 #include "Framebuffer.hpp"
 
-Framebuffer::Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2> shared_resolution) :
+Framebuffer::Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2>& shared_resolution) :
     m_fbo_id{new GLuint(0)},
     m_texture_id{new GLuint(0)},
     m_rbo_id{new GLuint(0)},
-    m_shared_resolution(shared_resolution),
     m_type{framebufferType}
 {
+    m_shared_resolution = shared_resolution;
     glGenFramebuffers(1, m_fbo_id.get());
     glBindFramebuffer(GL_FRAMEBUFFER, *m_fbo_id);
 

@@ -6,20 +6,23 @@
 #include <iostream>
 #include "../Renderer/Framebuffer.hpp"
 #include "GameAssetsGenerator.hpp"
+#include "../UI/UI.hpp"
 
 class GameScreen
 {
 protected:
     std::shared_ptr<glm::ivec2> m_shared_resolution;
     Framebuffer m_displayBuffer;
-
+    std::shared_ptr<UI> m_ui_ptr;
 public:
     GameScreen(
-        std::shared_ptr<glm::ivec2> shared_resolution
+        std::shared_ptr<glm::ivec2>& shared_resolution,
+        std::shared_ptr<UI>& ui_ptr
     );
 
     virtual ~GameScreen();
 
+    virtual void SetupUI();
     virtual void DrawScene() = 0;
     virtual void UseScenceAsTexture();
     virtual void ClearScene();
@@ -27,4 +30,5 @@ public:
     virtual void OnChangeResolution();
     virtual void OnMouseMoved(GLFWwindow* window_ptr, double xposIn, double yposIn) = 0;
     virtual void OnKeyPressed(GLFWwindow* window_ptr) = 0;
+    virtual void ListenKeysPressed() = 0;
 };

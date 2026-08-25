@@ -1,7 +1,11 @@
 #include "HomeScreen.hpp"
 
-HomeScreen::HomeScreen(std::shared_ptr<glm::ivec2> shared_resolution, std::string texture_path) :
-    GameScreen(shared_resolution),
+HomeScreen::HomeScreen(
+    std::shared_ptr<glm::ivec2>& shared_resolution,
+    std::shared_ptr<UI>& ui_ptr,
+    std::string texture_path
+) :
+    GameScreen(shared_resolution, ui_ptr),
     m_texture(texture_path.c_str())
 {
     std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
@@ -23,6 +27,11 @@ HomeScreen::HomeScreen(std::shared_ptr<glm::ivec2> shared_resolution, std::strin
 HomeScreen::~HomeScreen()
 {
     std::cout << "HomeScreen::~HomeScreen()" << std::endl;
+}
+
+void HomeScreen::SetupUI()
+{
+    GameScreen::SetupUI();
 }
 
 void HomeScreen::DrawScene()
@@ -52,4 +61,8 @@ void HomeScreen::OnMouseMoved(GLFWwindow *window_ptr, double xposIn, double ypos
 void HomeScreen::OnKeyPressed(GLFWwindow *window_ptr)
 {
     std::cout << "HomeScreen::OnKeyPressed(GLFWwindow *window_ptr)" << std::endl;
+}
+
+void HomeScreen::ListenKeysPressed()
+{
 }

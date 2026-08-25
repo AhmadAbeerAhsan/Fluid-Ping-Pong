@@ -1,6 +1,6 @@
+add_subdirectory(src/UI)
 add_subdirectory(src/Renderer)
 add_subdirectory(src/Game)
-add_subdirectory(src/UI)
 
 add_executable(
     GameClient

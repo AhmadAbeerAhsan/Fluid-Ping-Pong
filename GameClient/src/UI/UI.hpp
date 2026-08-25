@@ -7,8 +7,16 @@
 #include <memory>
 #include <functional>
 
+//#include "../Game/HomeScreen.hpp"
+//#include "../Game/Match.hpp"
+
 class UI
 {
+public:
+
+    std::function<void(int, int)> Navigate_To_Match;
+    std::function<void()> Navigate_To_HomeScreen;
+
 private:
     ImGuiIO* m_io_ptr = nullptr;
 public:
@@ -18,5 +26,5 @@ public:
     void SetupUI();
     void RenderUI();
 
-    std::function<void()> CraftUI;
+    void CraftUI();
 };

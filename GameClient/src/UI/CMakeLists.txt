@@ -4,5 +4,6 @@ add_library(
 )
 
 target_link_libraries(UI
-    imgui    
+    imgui
+    #Game
 )

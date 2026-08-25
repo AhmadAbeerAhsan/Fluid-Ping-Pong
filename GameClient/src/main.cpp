@@ -22,10 +22,11 @@ int main()
     std::shared_ptr<glm::ivec2> shared_resolution{std::make_shared<glm::ivec2>(screen_width, screen_height)};
 
     AppWindow appWindow{shared_resolution};
-    UI ui{appWindow.GetWindowPtr()};
+    std::shared_ptr<UI> ui_ptr{std::make_shared<UI>(appWindow.GetWindowPtr())};
 
     std::shared_ptr<GameScreen> screen{std::make_shared<HomeScreen>(
         shared_resolution,
+        ui_ptr,
         "GameClient/assets/textures/base.png"
     )};
         
@@ -41,15 +42,41 @@ int main()
     };
     appWindow.KeyPressedCallback = std::function<void(GLFWwindow*)>{
         [&screen](GLFWwindow* window_ptr){
-            screen->OnKeyPressed(window_ptr);
+            //screen->OnKeyPressed(window_ptr);
         }
     };
 
     screen.reset(new Match(
         Controller::Keyboard_Player1,
         Controller::Keyboard_Player2,
-        shared_resolution
+        shared_resolution,
+        ui_ptr
     ));
+
+    
+    ui_ptr->Navigate_To_HomeScreen = std::function<void()>{
+        [&screen, &shared_resolution, &ui_ptr](){
+            screen.reset(new HomeScreen(
+                shared_resolution,
+                ui_ptr,
+                "GameClient/assets/textures/base.png"
+            ));
+        }
+    };
+
+    ui_ptr->Navigate_To_Match = std::function<void(int, int)>{
+        [&screen, &shared_resolution, &ui_ptr](
+            int p1,
+            int p2
+        ){
+            screen.reset(new Match(
+                static_cast<Controller::ControllerType>(p1),
+                static_cast<Controller::ControllerType>(p2),
+                shared_resolution,
+                ui_ptr
+            ));
+        }
+    };
 
     std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
     Shader m_screen_texture_shader = Shader{"GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl"};
@@ -75,8 +102,12 @@ int main()
 
             //start = std::chrono::high_resolution_clock::now();
             appWindow.ProcessEvents();
-            ui.SetupUI();
-            
+            screen->ListenKeysPressed();
+
+            //ui_ptr->SetupUI();
+            //ui_ptr->CraftUI();
+
+            screen->SetupUI();
             screen->DrawScene();
             
             m_screen_texture_shader.Activate();
@@ -84,7 +115,7 @@ int main()
             fullscreen_quad.DrawWithExternalShader(m_screen_texture_shader);
             screen->ClearScene();
 
-            ui.RenderUI();
+            ui_ptr->RenderUI();
             appWindow.Display();
             appWindow.RecordEvents();
         }

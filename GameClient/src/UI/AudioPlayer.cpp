@@ -13,7 +13,8 @@ void AudioPlayer::loadMusicResources()
         ma_sound_group_uninit(&m_music_group);
     });
     setMusicVolume = std::function<void(float)>{[this](float volume){
-        ma_sound_group_set_volume(&m_music_group, volume);
+        m_music_vol = volume;
+        ma_sound_group_set_volume(&m_music_group, m_music_vol);
     }};
 
     m_result = ma_sound_init_from_file(
@@ -61,7 +62,8 @@ void AudioPlayer::loadSfxResources()
         ma_sound_group_uninit(&m_sfx_group);
     });
     setSfxVolume = std::function<void(float)>{[this](float volume){
-        ma_sound_group_set_volume(&m_sfx_group, volume);
+        m_sfx_vol = volume;
+        ma_sound_group_set_volume(&m_sfx_group, m_sfx_vol);
     }};
 
     m_result = ma_sound_init_from_file(
@@ -122,7 +124,8 @@ void AudioPlayer::loadUiResources()
         ma_sound_group_uninit(&m_ui_group);
     });
     setUiVolume = std::function<void(float)>{[this](float volume){
-        ma_sound_group_set_volume(&m_ui_group, volume);
+        m_ui_vol = volume;
+        ma_sound_group_set_volume(&m_ui_group, m_ui_vol);
     }};
 
     m_result = ma_sound_init_from_file(
@@ -200,9 +203,9 @@ void AudioPlayer::initEmptyFunctions()
 
     playBounce = std::function<void(const glm::vec2&)>{[](const glm::vec2& pos){}};
 
-    setMusicVolume = std::function<void(float)>{[](float v){}};
-    setSfxVolume = std::function<void(float)>{[](float v){}};
-    setUiVolume = std::function<void(float)>{[](float v){}};
+    setMusicVolume = std::function<void(float)>{[this](float v){ m_music_vol = v;}};
+    setSfxVolume = std::function<void(float)>{[this](float v){ m_sfx_vol = v;}};
+    setUiVolume = std::function<void(float)>{[this](float v){ m_ui_vol = v;}};
 }
 
 AudioPlayer::AudioPlayer() : SoundCleanUpCallBacks{},
@@ -260,6 +263,10 @@ void AudioPlayer::init()
     ma_fence_uninit(&m_fence);
 
     m_initialized = true;
+
+    setMusicVolume(m_music_vol);
+    setSfxVolume(m_sfx_vol);
+    setUiVolume(m_ui_vol);
 }
 
 void AudioPlayer::shutdown()

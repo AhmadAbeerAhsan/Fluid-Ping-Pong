@@ -26,6 +26,7 @@ public:
     virtual void SetUserVelocity(glm::vec2 normalized_dir);
     virtual void SetVelocity(glm::vec2 velocity);
     virtual void SetUserSpeedPerSecond(float speed);
+    virtual float UserSpeedPerSecond(){ return m_user_speed_per_second; }
     virtual void AssignModel(std::shared_ptr<Model> model);
     virtual void Move();
     virtual void Update();
@@ -38,6 +39,7 @@ public:
     virtual glm::vec2 Origin();
     virtual glm::vec2 Velocity(){ return m_velocity; }
     virtual float Mass(){ return m_mass; }
+    virtual void Mass(float m) { m_mass = m; }
 
     virtual bool CollideAgainstLine(std::shared_ptr<Boundary> boundary_ptr) = 0;
     virtual bool CollideAgainstCircle(std::shared_ptr<Boundary> boundary_ptr) = 0;

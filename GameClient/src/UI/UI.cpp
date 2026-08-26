@@ -32,25 +32,6 @@ void UI::RenderUI()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UI::BeginFullscreenOverlay(const char* name)
-{
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
-
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NoDecoration |
-        ImGuiWindowFlags_NoBackground |
-        ImGuiWindowFlags_NoSavedSettings;
-
-    ImGui::Begin(name, nullptr, flags);
-}
-
-void UI::EndOverlay()
-{
-    ImGui::End();
-}
-
 bool UI::StyledButton(const char* label, ImVec2 size)
 {
     // Placeholder palette -- tune to your actual art direction.
@@ -92,7 +73,7 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
                        const std::string& rightName, int rightScore)
 {
     float display_width = DisplaySizeX();
-
+    
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImVec2(display_width, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
@@ -124,8 +105,111 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
     ImGui::SameLine(rightNameX);
     ImGui::Text("%s", rightName.c_str());
 
+    std::string settings{"Settings"};
+    ImVec2 settings_size = ImGui::CalcTextSize(settings.c_str());
+    settings_size.x += 10;
+    settings_size.y += 10;
+    ImGui::SameLine(display_width - settings_size.x - 10);
+    if (ImGui::Button(settings.c_str(), settings_size))
+    {
+        m_show_settings = !m_show_settings;
+    }
+    
+    std::string quit{"Quit"};
+    ImVec2 quit_size = ImGui::CalcTextSize(quit.c_str());
+    quit_size.x += 10;
+    quit_size.y += 10;
+    ImGui::SameLine(10);
+    if (ImGui::Button(quit.c_str(), quit_size))
+    {
+        m_home_requested = true;
+    }
+
     ImGui::SetWindowFontScale(1.0f);
 
     ImGui::End();
     ImGui::PopStyleColor();
+}
+
+std::string UI::CreateDirectionString(bool is_red)
+{
+    std::string res = "";
+    if(is_red)
+    {
+        for (size_t i = 0; i < Red_Controls_Button.size(); i++)
+        {
+            if (i%2 == 0)
+            {
+                res += Red_Controls_Button[i] + ": " + Controls_Direction[i] + '\n';
+            }
+            else
+            {
+                res += Red_Controls_Button[i] + ": " + Controls_Direction[i] + '\n';
+            }
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < Green_Controls_Button.size(); i++)
+        {
+            if (i%2 == 0)
+            {
+                res += Green_Controls_Button[i] + ": " + Controls_Direction[i] + '\n';
+            }
+            else
+            {
+                res += Green_Controls_Button[i] + ": " + Controls_Direction[i] + '\n';
+            }
+        }
+    }
+    return res;
+}
+
+void UI::DrawGlobalSettings(std::function<void()> fun)
+{
+    if (!m_show_settings)
+    {
+        return;
+    }
+    
+    float display_width = DisplaySizeX() * 0.8f;
+    float display_height = DisplaySizeY() * 0.7;
+    float startx = DisplaySizeX() * 0.1f;
+    float starty = DisplaySizeY() * 0.1f;
+    ImGui::SetNextWindowPos(ImVec2(startx, starty));
+    ImGui::SetNextWindowSize(ImVec2(display_width, display_height));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+    ImGui::Begin(
+        "Global Settings -------------", nullptr, ImGuiWindowFlags_NoTitleBar
+    );
+    m_settings_uistyle.fontScale = 2.0f;
+    UIWidgets::Checkbox("Audio Settings -------------", &m_show_audio_settings, m_settings_uistyle);
+    if (m_show_audio_settings)
+    {
+        m_settings_uistyle.fontScale = 1.5f;
+        float music_vol{MusicVol()};
+        float sfx_vol{SFXVol()};
+        float ui_vol{UIVol()};
+        if (UIWidgets::Slider("   Music Sound", &music_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        {
+            SetMusicVol(music_vol);
+        }
+        ImGui::Spacing();
+        if (UIWidgets::Slider("   SFX Sound", &sfx_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        {
+            SetSFXVol(sfx_vol);
+        }
+        ImGui::Spacing();
+        if (UIWidgets::Slider("   UI Sound", &ui_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        {
+            SetUIVol(ui_vol);
+        }
+        ImGui::Spacing();
+    }
+    m_settings_uistyle.fontScale = 2.0f;
+    
+    fun();
+
+    ImGui::End();
+    ImGui::PopStyleColor(); 
 }

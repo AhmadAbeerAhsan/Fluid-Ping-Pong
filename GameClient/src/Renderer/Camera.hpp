@@ -21,7 +21,7 @@ public:
     glm::vec3 right;
     
     Camera(
-        glm::vec3 _position, glm::vec3 _target, glm::vec3 _up, glm::vec3 _right,
+        float height, float radius, float angle_d, glm::vec3 _target, glm::vec3 _up, glm::vec3 _right,
         std::shared_ptr<glm::ivec2> shared_resolution,
         float _fov, float _near_plane, float _far_plane
     );
@@ -41,6 +41,21 @@ public:
     void muouse_callback(GLFWwindow*, double xposIn, double yposIn);
 
     void updatePersprectiveProj();
+    std::vector<glm::vec2> Controls_Vector{
+        glm::vec2(-1.0f, 0.0f),
+        glm::vec2( 0.0f,-1.0f),
+        glm::vec2( 1.0f, 0.0f),
+        glm::vec2( 0.0f, 1.0f)
+    };
+
+    float m_height, m_radius, m_angle_d;
+    float GHeight(){ return m_height; }
+    float GRadius(){ return m_radius; }
+    float GAngle(){ return m_angle_d;}
+    void SetupPosition();
+    void SetGHeight(float h){ m_height = h; SetupPosition(); updateView(); }
+    void SetGRadius(float r){ m_radius = r; SetupPosition(); updateView(); }
+    void SetGAngle(float delta){ m_angle_d = delta; SetupPosition(); updateView(); }
 
 private:
     float yaw{}, pitch{}, roll{}, m_fov{}, m_near_z{}, m_far_z{};

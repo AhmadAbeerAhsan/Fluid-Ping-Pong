@@ -29,7 +29,7 @@ public:
     Controller(ControllerType controller_type);
     ~Controller();
 
-    std::function<void()> ListenInput;
+    std::function<void(const std::vector<glm::vec2>&)> ListenInput;
 
     void AssignBoundary(std::shared_ptr<Boundary> boundary_ptr);
 

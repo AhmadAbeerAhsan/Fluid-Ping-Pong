@@ -1,8 +1,6 @@
 #pragma once
 
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
+#include "UIWidgets.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -10,6 +8,7 @@
 
 #include <memory>
 #include <functional>
+#include <vector>
 
 #include "AudioPlayer.hpp"
 #include "State.hpp"
@@ -27,6 +26,7 @@ private:
     ImGuiIO* m_io_ptr = nullptr;
     AudioPlayer m_audio_player;
     State m_app_state;
+
 public:
     UI(GLFWwindow* window);
     ~UI() = default;
@@ -44,11 +44,12 @@ public:
     void PlayGoalSound(){ m_audio_player.playGoal(); }
     void PlayWinSound(){ m_audio_player.playWin(); }
     void PlayButtonSound(){ m_audio_player.playButton(); }
-
-    // Shared overlay window (fullscreen, no background/decoration) --
-    // used by any screen that draws centered content over the 3D scene.
-    void BeginFullscreenOverlay(const char* name);
-    void EndOverlay();
+    float MusicVol(){ return m_audio_player.MusicVol(); };
+    float SFXVol(){ return m_audio_player.SFXVol(); };
+    float UIVol(){ return m_audio_player.UIVol(); };
+    void SetMusicVol(float v){ return m_audio_player.setMusicVolume(v); };
+    void SetSFXVol(float v){ return m_audio_player.setSfxVolume(v); };
+    void SetUIVol(float v){ return m_audio_player.setUiVolume(v); };
 
     // Shared, consistently-styled widgets
     bool StyledButton(const char* label, ImVec2 size);
@@ -59,4 +60,19 @@ public:
     // Match HUD -- left name, centered score, right name. No clock.
     void DrawScoreHUD(const std::string& leftName, int leftScore,
                        const std::string& rightName, int rightScore);
+
+    bool m_show_audio_settings{true};
+    bool m_show_red_controls_settings{true};
+    bool m_show_green_controls_settings{true};
+    bool m_show_camera_settings{true};
+    bool m_show_game_settings{true};
+    UIStyle m_settings_uistyle{};
+    bool m_show_settings{false};
+    bool m_home_requested{false};
+    std::vector<std::string> Red_Controls_Button{"W", "S", "D", "A"};
+    std::vector<std::string> Green_Controls_Button{"I", "L", "K", "J"};
+    std::string CreateDirectionString(bool is_red);
+    std::vector<std::string> Controls_Direction{"Forward", "Right", "Down", "Left"};
+    
+    void DrawGlobalSettings(std::function<void()> fun = {});
 };

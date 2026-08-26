@@ -72,7 +72,6 @@ public:
 
     void SetupUI() override;
     void SetupScoreBar();
-    void SetupSettingsMenu();
     void SetupBottomMenu();
 
 private:

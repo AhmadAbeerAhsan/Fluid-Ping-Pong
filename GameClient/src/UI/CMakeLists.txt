@@ -3,6 +3,7 @@ add_library(
     UI.cpp
     AudioPlayer.cpp
     State.cpp
+    UIWidgets.cpp
 )
 
 target_link_libraries(UI

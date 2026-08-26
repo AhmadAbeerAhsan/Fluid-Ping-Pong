@@ -12,6 +12,8 @@ private:
     Shader m_screen_texture_shader;
     Model fullscreen_quad {};
     char m_player_name[64] = "";
+
+    UIStyle m_ui_style{};
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

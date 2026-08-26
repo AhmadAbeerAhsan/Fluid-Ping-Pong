@@ -23,7 +23,7 @@ Match::~Match()
 void Match::InitScene()
 {
     m_camera_ptr = std::make_shared<Camera>(
-        glm::vec3(-100.0f, 70.0f, 0.0f), 
+        65.0f, 65.0f, 90.0f, 
         glm::vec3(0.0f, 0.0f, 1.0f), 
         glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(1.0f, 0.0f, 0.0f),
@@ -356,10 +356,10 @@ void Match::InitScene()
 
     m_boundary_green_player_ptr = std::make_shared<BoundaryCircle>(m_handle_radius, handle_speed, handle_mass);
     m_boundary_green_player_ptr->AssignModel(handle_green);
+    m_player_green.AssignBoundary(m_boundary_green_player_ptr);
 
     m_boundary_ball_ptr = std::make_shared<BoundaryCircle>(m_ball_radius, 0.0f, ball_mass);
     m_boundary_ball_ptr->AssignModel(sphere);
-    m_player_green.AssignBoundary(m_boundary_green_player_ptr);
 
     m_boundary_left_ptr = std::make_shared<BoundaryLine>(
         glm::vec2((width)/2.0f, -(lenght)/2.0f),
@@ -575,16 +575,16 @@ void Match::ListenKeysPressed()
 {
     if (m_match_running)
     {
-        m_player_red.ListenInput();
-        m_player_green.ListenInput();
+        m_player_red.ListenInput(m_camera_ptr->Controls_Vector);
+        m_player_green.ListenInput(m_camera_ptr->Controls_Vector);
     }
 }
 
 void Match::ProcessPendingNavigation()
 {
-    if (m_home_requested)
+    if (m_ui_ptr->m_home_requested)
     {
-        m_home_requested = false;
+        m_ui_ptr->m_home_requested = false;
         m_ui_ptr->Navigate_To_HomeScreen();
     }
 }
@@ -595,12 +595,78 @@ void Match::SetupUI()
 
     SetupScoreBar();
 
-    if (!m_match_running)
-    {
+    if(!m_match_running && !m_ui_ptr->m_show_settings)
         SetupBottomMenu();
-    }
 
-    SetupSettingsMenu(); 
+    m_ui_ptr->DrawGlobalSettings([this](){
+        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
+        UIWidgets::Checkbox("Camera Settings -------------", &m_ui_ptr->m_show_camera_settings, m_ui_ptr->m_settings_uistyle);
+        if (m_ui_ptr->m_show_camera_settings)
+        {
+            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
+            float height{m_camera_ptr->GHeight()};
+            float distance{m_camera_ptr->GRadius()};
+            float angle{m_camera_ptr->GAngle()};
+            if (UIWidgets::Slider("   Height", &height, 10.0f, 200.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_camera_ptr->SetGHeight(height);
+            }
+            ImGui::Spacing();
+            if (UIWidgets::Slider("   Distance", &distance, 10.0f, 200.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_camera_ptr->SetGRadius(distance);
+            }
+            ImGui::Spacing();
+            if (UIWidgets::Slider("   Rotation", &angle, 0.0f, 360.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_camera_ptr->SetGAngle(angle);
+            }
+            ImGui::Spacing();
+        }
+
+        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
+        UIWidgets::Checkbox("Game Settings -------------", &m_ui_ptr->m_show_game_settings, m_ui_ptr->m_settings_uistyle);
+        if (m_ui_ptr->m_show_game_settings)
+        {
+            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
+            float ball_mass{m_boundary_ball_ptr->Mass()};
+            float handle_mass{m_boundary_green_player_ptr->Mass()};
+            float handle_speed{m_boundary_green_player_ptr->UserSpeedPerSecond()};
+            if (UIWidgets::Slider("   Ball Mass(g)", &ball_mass, 25.0f, 100.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_boundary_ball_ptr->Mass(ball_mass);
+            }
+            ImGui::Spacing();
+            if (UIWidgets::Slider("   Handle Mass(g)", &handle_mass, 100.0f, 300.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_boundary_red_player_ptr->Mass(handle_mass);
+                m_boundary_green_player_ptr->Mass(handle_mass);
+            }
+            ImGui::Spacing();
+            if (UIWidgets::Slider("   Handle Speed", &handle_speed, 15.0f, 50.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            {
+                m_boundary_red_player_ptr->SetUserSpeedPerSecond(handle_speed);
+                m_boundary_green_player_ptr->SetUserSpeedPerSecond(handle_speed);
+            }
+            ImGui::Spacing();
+        }
+
+        UIWidgets::Checkbox("Player Red Control Settings -------------", &m_ui_ptr->m_show_red_controls_settings, m_ui_ptr->m_settings_uistyle);
+        if (m_ui_ptr->m_show_red_controls_settings)
+        {
+            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
+            UIWidgets::Label(m_ui_ptr->CreateDirectionString(true).c_str(), m_ui_ptr->m_settings_uistyle, UIWidgets::HorizontalLayout::Left);
+        }
+
+        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
+        UIWidgets::Checkbox("Player Green Control Settings -------------", &m_ui_ptr->m_show_green_controls_settings, m_ui_ptr->m_settings_uistyle);
+        if (m_ui_ptr->m_show_green_controls_settings)
+        {
+            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
+            UIWidgets::Label(m_ui_ptr->CreateDirectionString(false).c_str(), m_ui_ptr->m_settings_uistyle, UIWidgets::HorizontalLayout::Left);
+            ImGui::SameLine();
+        }
+    }); 
 }
 
 void Match::SetupScoreBar()
@@ -611,36 +677,20 @@ void Match::SetupScoreBar()
     );
 }
 
-void Match::SetupSettingsMenu()
-{
-    ImGui::SetNextWindowPos(ImVec2(m_ui_ptr->DisplaySizeX() - 170.0f, 40.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(160.0f, 0.0f), ImGuiCond_Always);
-    ImGui::Begin(
-        "MatchMenu", nullptr,
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings
-    );
-
-    if (ImGui::CollapsingHeader("Menu"))
-    {
-        float width = ImGui::GetContentRegionAvail().x;
-
-        if (m_ui_ptr->StyledButton("Back to Home", ImVec2(width, 0.0f)))
-        {
-            m_home_requested = true;
-        }
-        if (m_ui_ptr->StyledButton("Settings", ImVec2(width, 0.0f)))
-        {
-            m_settings_requested = true;
-        }
-    }
-
-    ImGui::End();
-}
-
 void Match::SetupBottomMenu()
 {
-    m_ui_ptr->BeginFullscreenOverlay("MatchUI");
+    float display_width = m_ui_ptr->DisplaySizeX() * 0.6f;
+    float startx = m_ui_ptr->DisplaySizeX() * 0.2f;
+    float starty = m_ui_ptr->DisplaySizeY() * 0.3f;
+    ImGui::SetNextWindowPos(ImVec2(startx, starty));
+    ImGui::SetNextWindowSize(ImVec2(display_width, 0.0f));
+
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoBackground |
+        ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::Begin("MatchUI", nullptr, flags);
 
     if (!m_winner_name.empty())
     {
@@ -659,7 +709,7 @@ void Match::SetupBottomMenu()
         InitMatch();
     }
 
-    m_ui_ptr->EndOverlay();
+    ImGui::End();
 }
 
 void Match::SpawnRedWithServe()

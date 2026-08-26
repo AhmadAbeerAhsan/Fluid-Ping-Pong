@@ -22,6 +22,8 @@ HomeScreen::HomeScreen(
     fullscreen_quad.SetShader(m_screen_texture_shader);
     fullscreen_quad.initializeForGL();
     fullscreen_quad.UpdateModelMatrix();
+
+    m_ui_style.fontScale = 2.5f;
 }
 
 HomeScreen::~HomeScreen()
@@ -33,53 +35,62 @@ void HomeScreen::SetupUI()
 {
     GameScreen::SetupUI();
 
-    m_ui_ptr->BeginFullscreenOverlay("HomeScreen");
+    m_ui_ptr->DrawGlobalSettings();
+    /*
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoBackground |
+        ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::Begin("HomeScreen", nullptr, flags);
 
     const float menuWidth = 300.0f;
     const float buttonHeight = 50.0f;
     const float spacing = 12.0f;
 
     ImGui::SetCursorPosY((ImGui::GetWindowHeight() - 380.0f) * 0.5f);
-    m_ui_ptr->CenteredText("GAME", 2.5f);
+    m_ui_style.fontScale = 1.5f;
+    UIWidgets::Label("SPACE HOCKEY", m_ui_style, UIWidgets::HorizontalLayout::Middle);
 
     ImGui::Spacing();
     ImGui::Spacing();
 
-    float menuX = (ImGui::GetWindowWidth() - menuWidth) * 0.5f;
-    ImGui::SetCursorPosX(menuX);
-    m_ui_ptr->Label("Player Name");
+    m_ui_style.fontScale = 1.5f;
+    UIWidgets::InputField("Username:", m_player_name, sizeof(m_player_name), m_ui_style, UIWidgets::HorizontalLayout::Middle);
 
-    ImGui::SetCursorPosX(menuX);
-    ImGui::SetNextItemWidth(menuWidth);
-    ImGui::InputText("##Username", m_player_name, sizeof(m_player_name));
     ImGui::Spacing();
 
-    if (m_ui_ptr->CenteredButton("1 vs Bot", menuWidth, buttonHeight))
+    if (UIWidgets::Button("Human vs Bot", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
     {
         m_ui_ptr->SetUsername(m_player_name);
         // InitMatch(GameMode::Bot);
     }
     ImGui::Dummy(ImVec2(0.0f, spacing));
 
-    if (m_ui_ptr->CenteredButton("1 vs 1", menuWidth, buttonHeight))
+    if (UIWidgets::Button("Human vs Human", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
     {
         m_ui_ptr->SetUsername(m_player_name);
         m_ui_ptr->Navigate_To_Match(0, 1);
     }
     ImGui::Dummy(ImVec2(0.0f, spacing));
 
-    if (m_ui_ptr->CenteredButton("1 vs Online", menuWidth, buttonHeight))
+    if (UIWidgets::Button("Human vs Online Human", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
     {
         // Open online matchmaking
     }
     ImGui::Dummy(ImVec2(0.0f, spacing));
 
-    if (m_ui_ptr->CenteredButton("Settings", menuWidth, buttonHeight))
+    if (UIWidgets::Button("Settings", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
     {
         // Open settings
     }
 
-    m_ui_ptr->EndOverlay();
+    ImGui::End();
+    */
 }
 
 void HomeScreen::DrawScene()

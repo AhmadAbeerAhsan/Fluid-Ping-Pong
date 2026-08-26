@@ -40,6 +40,10 @@ private:
     std::vector<std::function<void()>> SoundCleanUpCallBacks;
     std::vector<std::function<void()>> SoundGroupCleanUpCallBacks;
     std::vector<std::function<void()>> EngineCleanUpCallBacks;
+
+    float m_music_vol{0.5f};
+    float m_sfx_vol{0.5f};
+    float m_ui_vol{0.5f};
 public:
     AudioPlayer(/* args */);
 
@@ -58,4 +62,8 @@ public:
     std::function<void(float)> setMusicVolume;
     std::function<void(float)> setSfxVolume;
     std::function<void(float)> setUiVolume;
+
+    float MusicVol(){ return m_music_vol; };
+    float SFXVol(){ return m_sfx_vol; };
+    float UIVol(){ return m_ui_vol; };
 };

@@ -32,6 +32,54 @@ HomeScreen::~HomeScreen()
 void HomeScreen::SetupUI()
 {
     GameScreen::SetupUI();
+
+    m_ui_ptr->BeginFullscreenOverlay("HomeScreen");
+
+    const float menuWidth = 300.0f;
+    const float buttonHeight = 50.0f;
+    const float spacing = 12.0f;
+
+    ImGui::SetCursorPosY((ImGui::GetWindowHeight() - 380.0f) * 0.5f);
+    m_ui_ptr->CenteredText("GAME", 2.5f);
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    float menuX = (ImGui::GetWindowWidth() - menuWidth) * 0.5f;
+    ImGui::SetCursorPosX(menuX);
+    m_ui_ptr->Label("Player Name");
+
+    ImGui::SetCursorPosX(menuX);
+    ImGui::SetNextItemWidth(menuWidth);
+    ImGui::InputText("##Username", m_player_name, sizeof(m_player_name));
+    ImGui::Spacing();
+
+    if (m_ui_ptr->CenteredButton("1 vs Bot", menuWidth, buttonHeight))
+    {
+        m_ui_ptr->SetUsername(m_player_name);
+        // InitMatch(GameMode::Bot);
+    }
+    ImGui::Dummy(ImVec2(0.0f, spacing));
+
+    if (m_ui_ptr->CenteredButton("1 vs 1", menuWidth, buttonHeight))
+    {
+        m_ui_ptr->SetUsername(m_player_name);
+        m_ui_ptr->Navigate_To_Match(0, 1);
+    }
+    ImGui::Dummy(ImVec2(0.0f, spacing));
+
+    if (m_ui_ptr->CenteredButton("1 vs Online", menuWidth, buttonHeight))
+    {
+        // Open online matchmaking
+    }
+    ImGui::Dummy(ImVec2(0.0f, spacing));
+
+    if (m_ui_ptr->CenteredButton("Settings", menuWidth, buttonHeight))
+    {
+        // Open settings
+    }
+
+    m_ui_ptr->EndOverlay();
 }
 
 void HomeScreen::DrawScene()
@@ -64,5 +112,9 @@ void HomeScreen::OnKeyPressed(GLFWwindow *window_ptr)
 }
 
 void HomeScreen::ListenKeysPressed()
+{
+}
+
+void HomeScreen::ProcessPendingNavigation()
 {
 }

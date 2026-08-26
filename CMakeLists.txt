@@ -18,6 +18,9 @@ target_include_directories(glm INTERFACE external/glm)
 # Add imgui
 add_subdirectory(external/imgui)
 
+# Add miniaudio
+add_subdirectory(external/miniaudio)
+
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/assimp)
 

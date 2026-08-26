@@ -7,16 +7,18 @@
 #include "CollisionEngine.hpp"
 #include "../Renderer/Renderer.hpp"
 #include "../Renderer/PointLight.hpp"
+#include "GameSession.hpp"
+#include <random>
 
 class Match : public GameScreen
 {
 private:
-    Controller m_player1, m_player2;
+    Controller m_player_red, m_player_green;
     std::shared_ptr<Boundary> 
-        m_boundary_p1_ptr, m_boundary_p2_ptr,
+        m_boundary_red_player_ptr, m_boundary_green_player_ptr,
         m_boundary_ball_ptr,
         m_boundary_left_ptr, m_boundary_right_ptr,
-        m_boundary_topgoal_ptr, m_boundary_bottomgoal_ptr,
+        m_boundary_red_goal_ptr, m_boundary_green_goal_ptr,
         m_boundary_bottomleft_ptr, m_boundary_bottomright_ptr,
         m_boundary_topleft_ptr, m_boundary_topright_ptr;
 
@@ -41,7 +43,13 @@ private:
     float m_ball_radius{2.0f};
     float m_handle_radius{};
 
+    GameSession m_gamesession{};
     CollisionEngine m_collision_engine;
+
+    bool m_settings_requested{false};
+    bool m_home_requested{false};
+    bool m_match_running{false};
+    std::string m_winner_name{""};
 
     void InitScene();
     void SetUpCollisionEngine();
@@ -54,12 +62,18 @@ public:
     );
     ~Match() override;
 
-    void SetupUI() override;
+    
     void DrawScene() override;
     void OnChangeResolution() override;
     void OnMouseMoved(GLFWwindow* window_ptr, double xposIn, double yposIn) override;
     void OnKeyPressed(GLFWwindow* window_ptr) override;
     void ListenKeysPressed() override;
+    void ProcessPendingNavigation() override;
+
+    void SetupUI() override;
+    void SetupScoreBar();
+    void SetupSettingsMenu();
+    void SetupBottomMenu();
 
 private:
     float lenght{100.0f};
@@ -67,4 +81,22 @@ private:
     float goal_lenght{20.0f};
     float side_border_lenght{75.0f};
     float min_size{3.0f};
+
+    std::vector<glm::vec2> m_red_spawn_points;
+    std::vector<glm::vec2> m_green_spawn_points;
+    std::mt19937 m_generator;
+
+    void SpawnRedWithServe();
+    void SpawnGreenWithServe();
+
+    void SpawnRedWithoutServe(int inverse_r);
+    void SpawnGreenWithoutServe(int inverse_r);
+
+    void RedScored();
+    void GreenScored();
+    void DetermineWinner();
+
+    void InitMatch();
+
+    int RandomInt(int min, int max);
 };

@@ -5,10 +5,11 @@ Match::Match(
     std::shared_ptr<glm::ivec2>& shared_resolution,
     std::shared_ptr<UI>& ui_ptr
 ) : GameScreen(shared_resolution, ui_ptr),
-    m_player1(player1_type), m_player2(player2_type),
+    m_player_red(player1_type), m_player_green(player2_type),
     m_snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution),
     m_pointLight(m_shared_resolution),
-    m_collision_engine{}
+    m_collision_engine{ui_ptr},
+    m_generator{std::random_device{}()}
 {
     InitScene();
     SetUpCollisionEngine();
@@ -81,6 +82,15 @@ void Match::InitScene()
 
     m_pointLight.SetRenderShader(m_blinn_phong_shdader);
     m_pointLight.SetShadowMapShader(m_shadow_map_shdader);
+
+    m_red_spawn_points = std::vector<glm::vec2>{
+        glm::vec2(width/4.0f, lenght/4.0f),
+        glm::vec2(-width/4.0f, lenght/4.0f),
+    };
+    m_green_spawn_points = std::vector<glm::vec2>{
+        glm::vec2(width/4.0f, -lenght/4.0f),
+        glm::vec2(-width/4.0f, -lenght/4.0f),
+    };
 
     std::vector<glm::vec3> m_positions {};
     std::vector<glm::vec3> m_colors {};
@@ -276,8 +286,8 @@ void Match::InitScene()
         glm::vec3(1.0f, 0.0f, 0.0f),
         glm::vec3(1.0f, 1.0f, 1.0f)
     );
-    std::shared_ptr<Model> handle{std::make_shared<Model>()};
-    m_models.emplace_back(handle);
+    std::shared_ptr<Model> handle_red{std::make_shared<Model>()};
+    m_models.emplace_back(handle_red);
     m_models.back()->SetGeometry(m_positions, m_indices);
     m_models.back()->SetMaterial(m_colors);
     m_models.back()->SetShader(m_blinn_phong_shdader);
@@ -299,8 +309,8 @@ void Match::InitScene()
         glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(1.0f, 1.0f, 1.0f)
     );
-    std::shared_ptr<Model> handle2{std::make_shared<Model>()};
-    m_models.emplace_back(handle2);
+    std::shared_ptr<Model> handle_green{std::make_shared<Model>()};
+    m_models.emplace_back(handle_green);
     m_models.back()->SetGeometry(m_positions, m_indices);
     m_models.back()->SetMaterial(m_colors);
     m_models.back()->SetShader(m_blinn_phong_shdader);
@@ -340,16 +350,16 @@ void Match::InitScene()
     float handle_mass{200.0f};
     float ball_mass{50.0f};
 
-    m_boundary_p1_ptr = std::make_shared<BoundaryCircle>(m_handle_radius, handle_speed, handle_mass);
-    m_boundary_p1_ptr->AssignModel(handle);
-    m_player1.AssignBoundary(m_boundary_p1_ptr);
+    m_boundary_red_player_ptr = std::make_shared<BoundaryCircle>(m_handle_radius, handle_speed, handle_mass);
+    m_boundary_red_player_ptr->AssignModel(handle_red);
+    m_player_red.AssignBoundary(m_boundary_red_player_ptr);
 
-    m_boundary_p2_ptr = std::make_shared<BoundaryCircle>(m_handle_radius, handle_speed, handle_mass);
-    m_boundary_p2_ptr->AssignModel(handle2);
+    m_boundary_green_player_ptr = std::make_shared<BoundaryCircle>(m_handle_radius, handle_speed, handle_mass);
+    m_boundary_green_player_ptr->AssignModel(handle_green);
 
     m_boundary_ball_ptr = std::make_shared<BoundaryCircle>(m_ball_radius, 0.0f, ball_mass);
     m_boundary_ball_ptr->AssignModel(sphere);
-    m_player2.AssignBoundary(m_boundary_p2_ptr);
+    m_player_green.AssignBoundary(m_boundary_green_player_ptr);
 
     m_boundary_left_ptr = std::make_shared<BoundaryLine>(
         glm::vec2((width)/2.0f, -(lenght)/2.0f),
@@ -361,12 +371,12 @@ void Match::InitScene()
         glm::vec2(0.0f, -1.0f)
     );
 
-    m_boundary_topgoal_ptr = std::make_shared<BoundaryLine>(
+    m_boundary_red_goal_ptr = std::make_shared<BoundaryLine>(
         glm::vec2(width/2.0f, lenght/2.0f),
         glm::vec2(-1.0f, 0.0f)
     );
 
-    m_boundary_bottomgoal_ptr = std::make_shared<BoundaryLine>(
+    m_boundary_green_goal_ptr = std::make_shared<BoundaryLine>(
         glm::vec2(-width/2.0f, -lenght/2.0f),
         glm::vec2(1.0f, 0.0f)
     );
@@ -399,30 +409,30 @@ void Match::SetUpCollisionEngine()
 {
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_boundary_p1_ptr->ClearReflection();
-            m_boundary_p2_ptr->ClearReflection();
+            m_boundary_red_player_ptr->ClearReflection();
+            m_boundary_green_player_ptr->ClearReflection();
             m_boundary_ball_ptr->ClearReflection();
         }
     );
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCicleXCollision(m_boundary_p1_ptr, width/2.0f, -width/2.0f);
+            m_collision_engine.ResolvePlayerCicleXCollision(m_boundary_red_player_ptr, width/2.0f, -width/2.0f);
         }
     );
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCicleZCollision(m_boundary_p1_ptr, side_border_lenght/2.0f, 0.0f);
+            m_collision_engine.ResolvePlayerCicleZCollision(m_boundary_red_player_ptr, side_border_lenght/2.0f, 0.0f);
         }
     );
 
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCicleXCollision(m_boundary_p2_ptr, width/2.0f, -width/2.0f);
+            m_collision_engine.ResolvePlayerCicleXCollision(m_boundary_green_player_ptr, width/2.0f, -width/2.0f);
         }
     );
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCicleZCollision(m_boundary_p2_ptr, 0.0f, -side_border_lenght/2.0f);
+            m_collision_engine.ResolvePlayerCicleZCollision(m_boundary_green_player_ptr, 0.0f, -side_border_lenght/2.0f);
         }
     );
 
@@ -434,16 +444,6 @@ void Match::SetUpCollisionEngine()
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
             m_collision_engine.ResolveBoundaryLineToCicleCollision(m_boundary_right_ptr, m_boundary_ball_ptr);
-        }
-    );
-    m_collision_engine.CollisionLoop.emplace_back(
-        [this](){
-            m_collision_engine.ResolveBoundaryLineToCicleCollision(m_boundary_topgoal_ptr, m_boundary_ball_ptr);
-        }
-    );
-    m_collision_engine.CollisionLoop.emplace_back(
-        [this](){
-            m_collision_engine.ResolveBoundaryLineToCicleCollision(m_boundary_bottomgoal_ptr, m_boundary_ball_ptr);
         }
     );
     m_collision_engine.CollisionLoop.emplace_back(
@@ -469,22 +469,37 @@ void Match::SetUpCollisionEngine()
 
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCircleToCicleCollision(m_boundary_p1_ptr, m_boundary_ball_ptr);
+            m_collision_engine.ResolvePlayerCircleToCicleCollision(m_boundary_red_player_ptr, m_boundary_ball_ptr);
         }
     );
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
-            m_collision_engine.ResolvePlayerCircleToCicleCollision(m_boundary_p2_ptr, m_boundary_ball_ptr);
+            m_collision_engine.ResolvePlayerCircleToCicleCollision(m_boundary_green_player_ptr, m_boundary_ball_ptr);
         }
     );
-}
 
-void Match::SetupUI()
-{
-    GameScreen::SetupUI();
-
-    
-
+    m_collision_engine.CollisionLoop.emplace_back(
+        [this](){
+            m_collision_engine.ResolveGoalLineToCicleCollision(
+                m_boundary_red_goal_ptr,
+                m_boundary_ball_ptr,
+                [this](){
+                    GreenScored();
+                }
+            );
+        }
+    );
+    m_collision_engine.CollisionLoop.emplace_back(
+        [this](){
+            m_collision_engine.ResolveGoalLineToCicleCollision(
+                m_boundary_green_goal_ptr,
+                m_boundary_ball_ptr,
+                [this](){
+                    RedScored();
+                }
+            );
+        }
+    );
 }
 
 void Match::DrawScene()
@@ -494,12 +509,12 @@ void Match::DrawScene()
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    m_boundary_p1_ptr->Move();
-    m_boundary_p2_ptr->Move();
+    m_boundary_red_player_ptr->Move();
+    m_boundary_green_player_ptr->Move();
     m_boundary_ball_ptr->Move();
 
-    m_boundary_p1_ptr->Update();
-    m_boundary_p2_ptr->Update();
+    m_boundary_red_player_ptr->Update();
+    m_boundary_green_player_ptr->Update();
     m_boundary_ball_ptr->Update();
 
     m_collision_engine.RunCollisionLoop(true);  //make this in another thread later
@@ -558,6 +573,189 @@ void Match::OnKeyPressed(GLFWwindow *window_ptr)
 
 void Match::ListenKeysPressed()
 {
-    m_player1.ListenInput();
-    m_player2.ListenInput();
+    if (m_match_running)
+    {
+        m_player_red.ListenInput();
+        m_player_green.ListenInput();
+    }
+}
+
+void Match::ProcessPendingNavigation()
+{
+    if (m_home_requested)
+    {
+        m_home_requested = false;
+        m_ui_ptr->Navigate_To_HomeScreen();
+    }
+}
+
+void Match::SetupUI()
+{
+    GameScreen::SetupUI();
+
+    SetupScoreBar();
+
+    if (!m_match_running)
+    {
+        SetupBottomMenu();
+    }
+
+    SetupSettingsMenu(); 
+}
+
+void Match::SetupScoreBar()
+{
+    m_ui_ptr->DrawScoreHUD(
+        m_ui_ptr->Username(), m_gamesession.PlayerRedScore(),
+        m_gamesession.PlayerGreenName(), m_gamesession.PlayerGreenScore()
+    );
+}
+
+void Match::SetupSettingsMenu()
+{
+    ImGui::SetNextWindowPos(ImVec2(m_ui_ptr->DisplaySizeX() - 170.0f, 40.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(160.0f, 0.0f), ImGuiCond_Always);
+    ImGui::Begin(
+        "MatchMenu", nullptr,
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings
+    );
+
+    if (ImGui::CollapsingHeader("Menu"))
+    {
+        float width = ImGui::GetContentRegionAvail().x;
+
+        if (m_ui_ptr->StyledButton("Back to Home", ImVec2(width, 0.0f)))
+        {
+            m_home_requested = true;
+        }
+        if (m_ui_ptr->StyledButton("Settings", ImVec2(width, 0.0f)))
+        {
+            m_settings_requested = true;
+        }
+    }
+
+    ImGui::End();
+}
+
+void Match::SetupBottomMenu()
+{
+    m_ui_ptr->BeginFullscreenOverlay("MatchUI");
+
+    if (!m_winner_name.empty())
+    {
+        const std::string text = m_winner_name + " won!";
+        const float fontScale = 2.0f;
+        float textY = (ImGui::GetWindowHeight() - ImGui::GetFontSize() * fontScale) * 0.5f - 40.0f;
+        ImGui::SetCursorPosY(textY);
+        m_ui_ptr->CenteredText(text.c_str(), fontScale);
+    }
+
+    const ImVec2 buttonSize(180.0f, 45.0f);
+    ImGui::SetCursorPosY((ImGui::GetWindowHeight() - buttonSize.y) * 0.5f + 40.0f);
+
+    if (m_ui_ptr->CenteredButton("Start Match", buttonSize.x, buttonSize.y))
+    {
+        InitMatch();
+    }
+
+    m_ui_ptr->EndOverlay();
+}
+
+void Match::SpawnRedWithServe()
+{
+    m_boundary_red_player_ptr->SetVelocity(glm::vec2(0.0f));
+    m_boundary_green_player_ptr->SetVelocity(glm::vec2(0.0f));
+    m_boundary_ball_ptr->SetVelocity(glm::vec2(0.0f));
+    int r = RandomInt(0, 1);
+
+    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[r]);
+    if (r == 0)
+    {
+        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[1]);
+        SpawnGreenWithoutServe(1);
+    }
+    else
+    {
+        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[0]);
+        SpawnGreenWithoutServe(0);
+    }
+}
+
+void Match::SpawnGreenWithServe()
+{
+    m_boundary_red_player_ptr->SetVelocity(glm::vec2(0.0f));
+    m_boundary_green_player_ptr->SetVelocity(glm::vec2(0.0f));
+    m_boundary_ball_ptr->SetVelocity(glm::vec2(0.0f));
+    int r = RandomInt(0, 1);
+
+    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[r]);
+    if (r == 0)
+    {
+        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[1]);
+        SpawnRedWithoutServe(1);
+    }
+    else
+    {
+        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[0]);
+        SpawnRedWithoutServe(0);
+    }
+}
+
+void Match::SpawnRedWithoutServe(int inverse_r)
+{
+    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[inverse_r]);
+}
+
+void Match::SpawnGreenWithoutServe(int inverse_r)
+{
+    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[inverse_r]);
+}
+
+void Match::RedScored()
+{
+    m_gamesession.AddPointPlayerRed();
+    SpawnGreenWithServe();
+    DetermineWinner();
+}
+
+void Match::GreenScored()
+{
+    m_gamesession.AddPointPlayerGreen();
+    SpawnRedWithServe();
+    DetermineWinner();
+}
+
+void Match::DetermineWinner()
+{
+    m_winner_name = m_gamesession.WhoWon();
+    std::cout << "Match::DetermineWinner(): " << m_winner_name << std::endl;
+    m_match_running = m_winner_name.empty();
+    if (!m_match_running)
+    {
+        m_ui_ptr->PlayWinSound();
+    }
+    
+}
+
+void Match::InitMatch()
+{
+    m_match_running = true;
+    m_winner_name = "";
+    m_gamesession.Reset();
+
+    if (RandomInt(0, 1) == 0)
+    {
+        SpawnRedWithServe();
+    }
+    else
+    {
+        SpawnGreenWithServe();
+    }
+}
+
+int Match::RandomInt(int min, int max)
+{
+    std::uniform_int_distribution<int> distribution(min, max);
+    return distribution(m_generator);
 }

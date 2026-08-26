@@ -11,8 +11,9 @@ class CollisionEngine
 {
 private:
     glm::vec2 Reflect(glm::vec2 dir, glm::vec2 normal);
+    std::shared_ptr<UI> m_ui_ptr;
 public:
-    CollisionEngine(/* args */);
+    CollisionEngine(std::shared_ptr<UI>& ui_ptr);
     ~CollisionEngine();
 
     void RunCollisionLoop(bool check);
@@ -27,7 +28,7 @@ public:
     void ResolveGoalLineToCicleCollision(
         std::shared_ptr<Boundary>& l1_ptr,
         std::shared_ptr<Boundary>& c2_ptr,
-        std::function<void()>& on_goalscored
+        std::function<void()> on_goalscored
     );
 
 };

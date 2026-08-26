@@ -11,6 +11,7 @@ private:
     Texture m_texture;
     Shader m_screen_texture_shader;
     Model fullscreen_quad {};
+    char m_player_name[64] = "";
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
@@ -25,4 +26,5 @@ public:
     void OnMouseMoved(GLFWwindow* window_ptr, double xposIn, double yposIn) override;
     void OnKeyPressed(GLFWwindow* window_ptr) override;
     void ListenKeysPressed() override;
+    void ProcessPendingNavigation() override;
 };

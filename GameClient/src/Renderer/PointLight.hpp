@@ -22,7 +22,7 @@ public:
         glm::vec4 ambient = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
         glm::vec4 diffusion = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
         glm::vec4 specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-        glm::vec3 position = glm::vec3(300.0f, 200.0f, 300.0f)
+        glm::vec3 position = glm::vec3(400.0f, 300.0f, 400.0f)
     );
     
     void SetRenderShader(Shader shader);

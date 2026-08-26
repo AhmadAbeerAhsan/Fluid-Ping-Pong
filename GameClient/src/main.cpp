@@ -118,6 +118,8 @@ int main()
             ui_ptr->RenderUI();
             appWindow.Display();
             appWindow.RecordEvents();
+
+            screen->ProcessPendingNavigation();
         }
     }
     catch(const std::exception& e)

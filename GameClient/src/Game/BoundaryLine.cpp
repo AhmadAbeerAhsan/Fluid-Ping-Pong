@@ -2,7 +2,6 @@
 
 float BoundaryLine::EdgeFunction(glm::vec2 p)
 {
-    std::cout << "BoundaryLine::EdgeFunction" << std::endl;
     return (p.x - m_pxz.x)*m_dxz.y - (p.y - m_pxz.y)*m_dxz.x;
 }
 
@@ -29,7 +28,6 @@ bool BoundaryLine::CollideAgainstCircle(std::shared_ptr<Boundary> boundary_ptr)
     float dot {glm::dot(m_normal, other_circle->Velocity())};
     if (dot < 0.0f)
     {
-        std::cout << "BoundaryCircle::CollideAgainstCircle: dot < 0.0f" << std::endl;
         float sign = EdgeFunction(other_circle->Origin()) + other_circle->Radius();
         return sign > 0.0f;
     }

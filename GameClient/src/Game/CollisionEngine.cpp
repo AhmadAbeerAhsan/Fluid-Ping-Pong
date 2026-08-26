@@ -5,8 +5,9 @@ glm::vec2 CollisionEngine::Reflect(glm::vec2 dir, glm::vec2 normal)
     return dir - (2.0f * (glm::dot(dir, normal))*dir);
 }
 
-CollisionEngine::CollisionEngine() : CollisionLoop{}
+CollisionEngine::CollisionEngine(std::shared_ptr<UI>& ui_ptr) : CollisionLoop{}
 {
+    m_ui_ptr = ui_ptr;
 }
 
 CollisionEngine::~CollisionEngine()
@@ -31,6 +32,7 @@ void CollisionEngine::ResolvePlayerCircleToCicleCollision(std::shared_ptr<Bounda
     if (!c1_ptr->CollideAgainstCircle(c2_ptr))
         return;
 
+    m_ui_ptr->PlayBounce(c2_ptr->Origin());
     glm::vec2 delta_d{c2_ptr->Origin() - c1_ptr->Origin()};
     glm::vec2 n = glm::normalize(
         delta_d
@@ -91,7 +93,6 @@ void CollisionEngine::ResolvePlayerCircleToCicleCollision(std::shared_ptr<Bounda
         {
             c1_ptr->Tranaslate(-n * penetration);
         }
-        
     }
 }
 
@@ -100,6 +101,7 @@ void CollisionEngine::ResolveBoundaryLineToCicleCollision(std::shared_ptr<Bounda
     if (!l1_ptr->CollideAgainstCircle(c2_ptr))
         return;
 
+    m_ui_ptr->PlayBounce(c2_ptr->Origin());
     auto other_line = std::dynamic_pointer_cast<BoundaryLine>(l1_ptr);
     if (!other_line)
     {
@@ -107,7 +109,6 @@ void CollisionEngine::ResolveBoundaryLineToCicleCollision(std::shared_ptr<Bounda
         return;
     }
 
-    std::cout << "CollisionEngine::SetVelocity" << std::endl;
     c2_ptr->Reflect(other_line->Normal());
 }
 
@@ -176,11 +177,13 @@ void CollisionEngine::ResolvePlayerCicleZCollision(std::shared_ptr<Boundary> &c1
 void CollisionEngine::ResolveGoalLineToCicleCollision(
         std::shared_ptr<Boundary>& l1_ptr,
         std::shared_ptr<Boundary>& c2_ptr,
-        std::function<void()>& on_goalscored
+        std::function<void()> on_goalscored
     )
 {
     if (!l1_ptr->CollideAgainstCircle(c2_ptr))
         return;
+
+    m_ui_ptr->PlayGoalSound();
 
     on_goalscored();
 }

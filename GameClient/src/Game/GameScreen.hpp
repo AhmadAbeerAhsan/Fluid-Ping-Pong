@@ -31,4 +31,5 @@ public:
     virtual void OnMouseMoved(GLFWwindow* window_ptr, double xposIn, double yposIn) = 0;
     virtual void OnKeyPressed(GLFWwindow* window_ptr) = 0;
     virtual void ListenKeysPressed() = 0;
+    virtual void ProcessPendingNavigation() = 0;
 };

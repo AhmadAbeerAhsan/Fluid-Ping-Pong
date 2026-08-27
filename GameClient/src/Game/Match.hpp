@@ -46,8 +46,12 @@ private:
     GameSession m_gamesession{};
     CollisionEngine m_collision_engine;
 
+    //UI
+    bool m_show_red_controls_settings{true};
+    bool m_show_green_controls_settings{true};
+    bool m_show_camera_settings{true};
+    bool m_show_game_settings{true};
     bool m_settings_requested{false};
-    bool m_home_requested{false};
     bool m_match_running{false};
     std::string m_winner_name{""};
 
@@ -56,7 +60,8 @@ private:
 
 public:
     Match(
-        Controller::ControllerType player1_type, Controller::ControllerType player2_type,
+        Controller::PlayerType player1_type, Controller::PlayerType player2_type,
+        Controller::ControllerType player1_controller, Controller::ControllerType player2_controller,
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr
     );
@@ -98,4 +103,12 @@ private:
     void InitMatch();
 
     int RandomInt(int min, int max);
+
+    std::function<const std::vector<glm::vec2>()> PassMouseXZPos;
+    std::function<const std::vector<glm::vec2>()> PassCameraControls;
+    void GiveMouseControls(Controller::PlayerType player_type);
+    std::function<const std::vector<glm::vec2>()> PassRedInputs;
+    std::function<const std::vector<glm::vec2>()> PassGreenInputs;
+    void InitializePassInputs();
+    void DeterminePassInputs();
 };

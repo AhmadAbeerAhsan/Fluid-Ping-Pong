@@ -1,8 +1,7 @@
 #include "UI.hpp"
 
 UI::UI(GLFWwindow *window) :
-    m_audio_player(),
-    m_app_state()
+    m_audio_player()
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -182,31 +181,40 @@ void UI::DrawGlobalSettings(std::function<void()> fun)
     ImGui::Begin(
         "Global Settings -------------", nullptr, ImGuiWindowFlags_NoTitleBar
     );
-    m_settings_uistyle.fontScale = 2.0f;
-    UIWidgets::Checkbox("Audio Settings -------------", &m_show_audio_settings, m_settings_uistyle);
+
+    ImGui::SetWindowFontScale(1.5f);
+    std::string close{"Close Settings"};
+    ImVec2 close_size = ImGui::CalcTextSize(close.c_str());
+    close_size.x += 10;
+    close_size.y += 10;
+    ImGui::SetCursorPosX(display_width - close_size.x);
+    if (ImGui::Button(close.c_str(), close_size))
+    {
+        m_show_settings = false;
+    }
+
+    UIWidgets::Checkbox("Audio Settings -------------", &m_show_audio_settings, 2.0f);
     if (m_show_audio_settings)
     {
-        m_settings_uistyle.fontScale = 1.5f;
         float music_vol{MusicVol()};
         float sfx_vol{SFXVol()};
         float ui_vol{UIVol()};
-        if (UIWidgets::Slider("   Music Sound", &music_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        if (UIWidgets::Slider("   Music Sound", &music_vol, 0.0f, 1.0f, 1.5f, 200.0f))
         {
             SetMusicVol(music_vol);
         }
         ImGui::Spacing();
-        if (UIWidgets::Slider("   SFX Sound", &sfx_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        if (UIWidgets::Slider("   SFX Sound", &sfx_vol, 0.0f, 1.0f, 1.5f, 200.0f))
         {
             SetSFXVol(sfx_vol);
         }
         ImGui::Spacing();
-        if (UIWidgets::Slider("   UI Sound", &ui_vol, 0.0f, 1.0f, m_settings_uistyle, 200.0f))
+        if (UIWidgets::Slider("   UI Sound", &ui_vol, 0.0f, 1.0f, 1.5f, 200.0f))
         {
             SetUIVol(ui_vol);
         }
         ImGui::Spacing();
     }
-    m_settings_uistyle.fontScale = 2.0f;
     
     fun();
 

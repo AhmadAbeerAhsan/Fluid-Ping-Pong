@@ -15,13 +15,12 @@ public:
     glm::mat4 proj;
     glm::mat4 skyboxView;
 
-    glm::vec3 position;
-    glm::vec3 target;
-    glm::vec3 up;
-    glm::vec3 right;
-    
+    glm::mat4 inv_view;
+    glm::mat4 inv_proj;
+
+    glm::vec3 position;   
     Camera(
-        float height, float radius, float angle_d, glm::vec3 _target, glm::vec3 _up, glm::vec3 _right,
+        float height, float radius, float angle_d,
         std::shared_ptr<glm::ivec2> shared_resolution,
         float _fov, float _near_plane, float _far_plane
     );
@@ -30,15 +29,7 @@ public:
     // view
     void translate(glm::vec3 translate);
     void updatePositon(glm::vec3 newPosition);
-    void changeDirection(glm::vec3 direction);
     void updateView();
-
-    // proj
-    void setupProjection(const float _fov, const float _aspect_ratio, const float _near = 0.1f, const float _far = 1000.0f);
-    void Rotate(const float _yaw, const float _pitch, const float _roll);
-
-    void processInput(GLFWwindow* window);
-    void muouse_callback(GLFWwindow*, double xposIn, double yposIn);
 
     void updatePersprectiveProj();
     std::vector<glm::vec2> Controls_Vector{
@@ -58,8 +49,7 @@ public:
     void SetGAngle(float delta){ m_angle_d = delta; SetupPosition(); updateView(); }
 
 private:
-    float yaw{}, pitch{}, roll{}, m_fov{}, m_near_z{}, m_far_z{};
-    float lastX, lastY;
+    float m_fov{}, m_near_z{}, m_far_z{};
 
     std::shared_ptr<glm::ivec2> m_shared_resolution;
 

@@ -1,16 +1,19 @@
 #include "Match.hpp"
 
 Match::Match(
-    Controller::ControllerType player1_type, Controller::ControllerType player2_type,
+    Controller::PlayerType player1_type, Controller::PlayerType player2_type,
+    Controller::ControllerType player1_controller, Controller::ControllerType player2_controller,
     std::shared_ptr<glm::ivec2>& shared_resolution,
     std::shared_ptr<UI>& ui_ptr
 ) : GameScreen(shared_resolution, ui_ptr),
-    m_player_red(player1_type), m_player_green(player2_type),
+    m_player_red(player1_type, player1_controller), m_player_green(player2_type, player2_controller),
     m_snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution),
     m_pointLight(m_shared_resolution),
     m_collision_engine{ui_ptr},
     m_generator{std::random_device{}()}
 {
+    InitializePassInputs();
+    DeterminePassInputs();
     InitScene();
     SetUpCollisionEngine();
 }
@@ -23,15 +26,12 @@ Match::~Match()
 void Match::InitScene()
 {
     m_camera_ptr = std::make_shared<Camera>(
-        65.0f, 65.0f, 90.0f, 
-        glm::vec3(0.0f, 0.0f, 1.0f), 
-        glm::vec3(0.0f, 1.0f, 0.0f),
-        glm::vec3(1.0f, 0.0f, 0.0f),
+        65.0f, 65.0f, 90.0f,
         m_shared_resolution,
         45.0f,
         0.01f, 1000.0f
     );
-
+    m_camera_ptr->updatePersprectiveProj();
     //Create Textures
     Texture wall_texture{"GameClient/assets/textures/tile.jpg"};
     Texture floor_texture{"GameClient/assets/textures/base.png"};
@@ -562,12 +562,12 @@ void Match::OnChangeResolution()
 
 void Match::OnMouseMoved(GLFWwindow *window_ptr, double xposIn, double yposIn)
 {
-    m_camera_ptr->muouse_callback(window_ptr, xposIn, yposIn);
+    //m_camera_ptr->muouse_callback(window_ptr, xposIn, yposIn);
 }
 
 void Match::OnKeyPressed(GLFWwindow *window_ptr)
 {
-    m_camera_ptr->processInput(window_ptr);
+    //m_camera_ptr->processInput(window_ptr);
     std::cout << "Match::OnKeyPressed(GLFWwindow *window_ptr)" << std::endl;
 }
 
@@ -575,17 +575,17 @@ void Match::ListenKeysPressed()
 {
     if (m_match_running)
     {
-        m_player_red.ListenInput(m_camera_ptr->Controls_Vector);
-        m_player_green.ListenInput(m_camera_ptr->Controls_Vector);
+        m_player_red.ListenInput(PassRedInputs());
+        m_player_green.ListenInput(PassGreenInputs());
     }
 }
 
 void Match::ProcessPendingNavigation()
 {
-    if (m_ui_ptr->m_home_requested)
+    if (m_ui->m_home_requested)
     {
-        m_ui_ptr->m_home_requested = false;
-        m_ui_ptr->Navigate_To_HomeScreen();
+        m_ui->m_home_requested = false;
+        m_ui->Navigate_To_HomeScreen();
     }
 }
 
@@ -595,55 +595,51 @@ void Match::SetupUI()
 
     SetupScoreBar();
 
-    if(!m_match_running && !m_ui_ptr->m_show_settings)
+    if(!m_match_running && !m_ui->m_show_settings)
         SetupBottomMenu();
 
-    m_ui_ptr->DrawGlobalSettings([this](){
-        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
-        UIWidgets::Checkbox("Camera Settings -------------", &m_ui_ptr->m_show_camera_settings, m_ui_ptr->m_settings_uistyle);
-        if (m_ui_ptr->m_show_camera_settings)
+    m_ui->DrawGlobalSettings([this](){
+        UIWidgets::Checkbox("Camera Settings -------------", &m_show_camera_settings, 2.0f);
+        if (m_show_camera_settings)
         {
-            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
             float height{m_camera_ptr->GHeight()};
             float distance{m_camera_ptr->GRadius()};
             float angle{m_camera_ptr->GAngle()};
-            if (UIWidgets::Slider("   Height", &height, 10.0f, 200.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Height", &height, 10.0f, 200.0f, 1.5f, 200.0f))
             {
                 m_camera_ptr->SetGHeight(height);
             }
             ImGui::Spacing();
-            if (UIWidgets::Slider("   Distance", &distance, 10.0f, 200.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Distance", &distance, 10.0f, 200.0f, 1.5f, 200.0f))
             {
                 m_camera_ptr->SetGRadius(distance);
             }
             ImGui::Spacing();
-            if (UIWidgets::Slider("   Rotation", &angle, 0.0f, 360.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Rotation", &angle, 0.0f, 360.0f, 1.5f, 200.0f))
             {
                 m_camera_ptr->SetGAngle(angle);
             }
             ImGui::Spacing();
         }
 
-        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
-        UIWidgets::Checkbox("Game Settings -------------", &m_ui_ptr->m_show_game_settings, m_ui_ptr->m_settings_uistyle);
-        if (m_ui_ptr->m_show_game_settings)
+        UIWidgets::Checkbox("Game Settings -------------", &m_show_game_settings, 2.0f);
+        if (m_show_game_settings)
         {
-            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
             float ball_mass{m_boundary_ball_ptr->Mass()};
             float handle_mass{m_boundary_green_player_ptr->Mass()};
             float handle_speed{m_boundary_green_player_ptr->UserSpeedPerSecond()};
-            if (UIWidgets::Slider("   Ball Mass(g)", &ball_mass, 25.0f, 100.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Ball Mass(g)", &ball_mass, 25.0f, 100.0f, 1.5f, 200.0f))
             {
                 m_boundary_ball_ptr->Mass(ball_mass);
             }
             ImGui::Spacing();
-            if (UIWidgets::Slider("   Handle Mass(g)", &handle_mass, 100.0f, 300.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Handle Mass(g)", &handle_mass, 100.0f, 300.0f, 1.5f, 200.0f))
             {
                 m_boundary_red_player_ptr->Mass(handle_mass);
                 m_boundary_green_player_ptr->Mass(handle_mass);
             }
             ImGui::Spacing();
-            if (UIWidgets::Slider("   Handle Speed", &handle_speed, 15.0f, 50.0f, m_ui_ptr->m_settings_uistyle, 200.0f))
+            if (UIWidgets::Slider("   Handle Speed", &handle_speed, 15.0f, 50.0f, 1.5f, 200.0f))
             {
                 m_boundary_red_player_ptr->SetUserSpeedPerSecond(handle_speed);
                 m_boundary_green_player_ptr->SetUserSpeedPerSecond(handle_speed);
@@ -651,37 +647,61 @@ void Match::SetupUI()
             ImGui::Spacing();
         }
 
-        UIWidgets::Checkbox("Player Red Control Settings -------------", &m_ui_ptr->m_show_red_controls_settings, m_ui_ptr->m_settings_uistyle);
-        if (m_ui_ptr->m_show_red_controls_settings)
+        UIWidgets::Checkbox("Player Red Control Settings -------------", &m_show_red_controls_settings, 2.0f);
+        if (m_show_red_controls_settings)
         {
-            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
-            UIWidgets::Label(m_ui_ptr->CreateDirectionString(true).c_str(), m_ui_ptr->m_settings_uistyle, UIWidgets::HorizontalLayout::Left);
+            UIWidgets::Label(m_ui->CreateDirectionString(true).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
+            bool isRedMouse = m_player_red.GetControllerType() == Controller::ControllerType::Mouse;
+            if(UIWidgets::Checkbox("Enable Red Mouse Controls", &isRedMouse, 1.5f))
+            {
+                if(isRedMouse)
+                {
+                    GiveMouseControls(Controller::PlayerType::Red);
+                    DeterminePassInputs();
+                }
+                else
+                {
+                    m_player_red.SetControllerType(Controller::ControllerType::Keyboard);
+                    DeterminePassInputs();
+                }
+            }
         }
 
-        m_ui_ptr->m_settings_uistyle.fontScale = 2.0f;
-        UIWidgets::Checkbox("Player Green Control Settings -------------", &m_ui_ptr->m_show_green_controls_settings, m_ui_ptr->m_settings_uistyle);
-        if (m_ui_ptr->m_show_green_controls_settings)
+        UIWidgets::Checkbox("Player Green Control Settings -------------", &m_show_green_controls_settings, 2.0f);
+        if (m_show_green_controls_settings)
         {
-            m_ui_ptr->m_settings_uistyle.fontScale = 1.5f;
-            UIWidgets::Label(m_ui_ptr->CreateDirectionString(false).c_str(), m_ui_ptr->m_settings_uistyle, UIWidgets::HorizontalLayout::Left);
-            ImGui::SameLine();
+            UIWidgets::Label(m_ui->CreateDirectionString(false).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
+            bool isGreenMouse = m_player_green.GetControllerType() == Controller::ControllerType::Mouse;
+            if(UIWidgets::Checkbox("Enable Green Mouse Controls", &isGreenMouse, 1.5f))
+            {
+                if(isGreenMouse)
+                {
+                    GiveMouseControls(Controller::PlayerType::Green);
+                    DeterminePassInputs();
+                }
+                else
+                {
+                    m_player_green.SetControllerType(Controller::ControllerType::Keyboard);
+                    DeterminePassInputs();
+                }
+            }
         }
     }); 
 }
 
 void Match::SetupScoreBar()
 {
-    m_ui_ptr->DrawScoreHUD(
-        m_ui_ptr->Username(), m_gamesession.PlayerRedScore(),
+    m_ui->DrawScoreHUD(
+        m_ui->Username, m_gamesession.PlayerRedScore(),
         m_gamesession.PlayerGreenName(), m_gamesession.PlayerGreenScore()
     );
 }
 
 void Match::SetupBottomMenu()
 {
-    float display_width = m_ui_ptr->DisplaySizeX() * 0.6f;
-    float startx = m_ui_ptr->DisplaySizeX() * 0.2f;
-    float starty = m_ui_ptr->DisplaySizeY() * 0.3f;
+    float display_width = m_ui->DisplaySizeX() * 0.6f;
+    float startx = m_ui->DisplaySizeX() * 0.2f;
+    float starty = m_ui->DisplaySizeY() * 0.3f;
     ImGui::SetNextWindowPos(ImVec2(startx, starty));
     ImGui::SetNextWindowSize(ImVec2(display_width, 0.0f));
 
@@ -698,13 +718,13 @@ void Match::SetupBottomMenu()
         const float fontScale = 2.0f;
         float textY = (ImGui::GetWindowHeight() - ImGui::GetFontSize() * fontScale) * 0.5f - 40.0f;
         ImGui::SetCursorPosY(textY);
-        m_ui_ptr->CenteredText(text.c_str(), fontScale);
+        m_ui->CenteredText(text.c_str(), fontScale);
     }
 
     const ImVec2 buttonSize(180.0f, 45.0f);
     ImGui::SetCursorPosY((ImGui::GetWindowHeight() - buttonSize.y) * 0.5f + 40.0f);
 
-    if (m_ui_ptr->CenteredButton("Start Match", buttonSize.x, buttonSize.y))
+    if (m_ui->CenteredButton("Start Match", buttonSize.x, buttonSize.y))
     {
         InitMatch();
     }
@@ -783,7 +803,7 @@ void Match::DetermineWinner()
     m_match_running = m_winner_name.empty();
     if (!m_match_running)
     {
-        m_ui_ptr->PlayWinSound();
+        m_ui->PlayWinSound();
     }
     
 }
@@ -808,4 +828,102 @@ int Match::RandomInt(int min, int max)
 {
     std::uniform_int_distribution<int> distribution(min, max);
     return distribution(m_generator);
+}
+
+void Match::GiveMouseControls(Controller::PlayerType player_type)
+{
+    switch (player_type)
+    {
+    case Controller::PlayerType::Red:
+        m_player_red.SetControllerType(Controller::ControllerType::Mouse);
+        if (m_player_green.GetControllerType() == Controller::ControllerType::Mouse)
+        {
+            m_player_green.SetControllerType(Controller::ControllerType::Keyboard);
+        }
+        break;
+    case Controller::PlayerType::Green:
+        m_player_green.SetControllerType(Controller::ControllerType::Mouse);
+        if (m_player_red.GetControllerType() == Controller::ControllerType::Mouse)
+        {
+            m_player_red.SetControllerType(Controller::ControllerType::Keyboard);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void Match::InitializePassInputs()
+{
+    PassMouseXZPos = std::function<const std::vector<glm::vec2>()>{
+        [this](){
+            ImVec2 mouse = ImGui::GetMousePos();
+            const float width  = static_cast<float>(m_shared_resolution->x);
+            const float height = static_cast<float>(m_shared_resolution->y);
+
+            // ImGui: origin is top-left.
+            // OpenGL NDC: origin is center, +Y is up.
+            glm::vec2 ndc{0.0f};
+            ndc.x =  2.0f * mouse.x / width - 1.0f;
+            ndc.y =  1.0f - 2.0f * mouse.y / height;
+
+            glm::vec4 ray_clip{ndc.x, ndc.y, -1.0f, 1.0f};
+
+            glm::vec4 ray_eye = m_camera_ptr->inv_proj * ray_clip;
+            ray_eye = glm::vec4(ray_eye.x, ray_eye.y, ray_eye.z, 0.0f);
+            glm::vec3 ray_wor = m_camera_ptr->inv_view * ray_eye;
+
+            ray_wor = glm::normalize(ray_wor);
+
+            float t = (-min_size/2.0f)-m_camera_ptr->position.y;
+            t /= ray_wor.y;
+
+            glm::vec2 pos {
+                m_camera_ptr->position.x + t*ray_wor.x,
+                m_camera_ptr->position.z + t*ray_wor.z
+            };
+
+            if (ImGui::IsKeyDown(ImGuiKey_Z))
+            {
+                std::cout << "t: " << t << std::endl;
+                std::cout << "Cam: " << m_camera_ptr->position.x << "," << m_camera_ptr->position.y << "," << m_camera_ptr->position.z << std::endl;
+                std::cout << "Dir: " << ray_wor.x << "," << ray_wor.y << "," << ray_wor.z << std::endl;
+                std::cout << "Mous: " << mouse.x << "," << mouse.y << std::endl;
+                std::cout << "Ndc: " << ndc.x << "," << ndc.y << std::endl;
+                std::cout << "Pos: " << pos.x << "," << pos.y << std::endl;
+            }
+            return std::vector<glm::vec2>{pos};
+        }
+    };
+    PassCameraControls = std::function<const std::vector<glm::vec2>()>{
+        [this](){
+            return m_camera_ptr->Controls_Vector;
+        }
+    };
+}
+
+void Match::DeterminePassInputs()
+{
+    switch (m_player_red.GetControllerType())
+    {
+    case Controller::ControllerType::Keyboard:
+        PassRedInputs = PassCameraControls;
+        break;
+    case Controller::ControllerType::Mouse:
+        PassRedInputs = PassMouseXZPos;
+        break;
+    default:
+        break;
+    }
+    switch (m_player_green.GetControllerType())
+    {
+    case Controller::ControllerType::Keyboard:
+        PassGreenInputs = PassCameraControls;
+        break;
+    case Controller::ControllerType::Mouse:
+        PassGreenInputs = PassMouseXZPos;
+        break;
+    default:
+        break;
+    }
 }

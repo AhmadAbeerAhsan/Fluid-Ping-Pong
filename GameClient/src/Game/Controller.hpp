@@ -15,22 +15,38 @@ class Controller
 public:
     enum ControllerType
     {
-        Keyboard_Player1,
-        Keyboard_Player2,
-        Mouse_Player,
+        Keyboard,
+        Mouse,
         Bot,
-        Online_Opponent
+        Online,
+    };
+    enum PlayerType
+    {
+        Red,
+        Green
     };
 private:
     std::shared_ptr<Boundary> m_boundary_ptr;
 
     int m_keyboard_controller_check{0};
+    void InitControllers();
+
+    std::function<void(const std::vector<glm::vec2>&)> Keyboard_Player_Red_Listner;
+    std::function<void(const std::vector<glm::vec2>&)> Keyboard_Player_Green_Listner;
+    std::function<void(const std::vector<glm::vec2>&)> Mouse_Listner;
+
+    PlayerType m_player_type;
+    ControllerType m_controller_type;
 public:
-    Controller(ControllerType controller_type);
+    Controller(PlayerType player_type, ControllerType controller_type);
     ~Controller();
 
     std::function<void(const std::vector<glm::vec2>&)> ListenInput;
 
+    void SetControllerType();
     void AssignBoundary(std::shared_ptr<Boundary> boundary_ptr);
+
+    void SetControllerType(ControllerType controller_type){ m_controller_type = controller_type; SetControllerType(); }
+    ControllerType GetControllerType(){ return m_controller_type; }
 
 };

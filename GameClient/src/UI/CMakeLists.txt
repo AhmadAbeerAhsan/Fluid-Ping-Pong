@@ -2,7 +2,6 @@ add_library(
     UI
     UI.cpp
     AudioPlayer.cpp
-    State.cpp
     UIWidgets.cpp
 )
 

@@ -54,6 +54,14 @@ void AppWindow::Display()
     glfwSwapBuffers(*m_window_ptr);
 }
 
+void AppWindow::UpdateWindowPreMature()
+{
+    int width, height;
+    glfwGetWindowSize(*m_window_ptr, &width, &height);
+    m_shared_resolution->x = width; m_shared_resolution->y = height;
+    UpdateResolutionSubscibedCallback();
+}
+
 void AppWindow::framebuffer_size_callback(GLFWwindow *window, int _screen_width, int _screen_height)
 {
     AppWindow* self = static_cast<AppWindow*>(glfwGetWindowUserPointer(window));

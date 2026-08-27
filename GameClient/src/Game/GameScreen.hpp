@@ -13,7 +13,7 @@ class GameScreen
 protected:
     std::shared_ptr<glm::ivec2> m_shared_resolution;
     Framebuffer m_displayBuffer;
-    std::shared_ptr<UI> m_ui_ptr;
+    std::shared_ptr<UI> m_ui;
 public:
     GameScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

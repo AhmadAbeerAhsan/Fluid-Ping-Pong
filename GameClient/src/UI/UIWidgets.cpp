@@ -9,9 +9,12 @@ namespace
     };
 }
 
-bool UIWidgets::Button(const char* label, const UIStyle& style, ImVec2 size, HorizontalLayout hl)
+bool UIWidgets::Button(const char* label, float font_size, HorizontalLayout hl)
 {
-    ScopedFontScale fontScale(style.fontScale);
+    ScopedFontScale fontScale(font_size);
+    ImVec2 size = ImGui::CalcTextSize(label);
+    size.y += 10 + style.padding.y;
+    size.x += 2.0f * style.padding.x;
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, style.padding);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, style.rounding);
@@ -48,11 +51,11 @@ bool UIWidgets::Button(const char* label, const UIStyle& style, ImVec2 size, Hor
     return pressed;
 }
 
-void UIWidgets::Label(const char* text, const UIStyle& style, HorizontalLayout hl)
+void UIWidgets::Label(const char* text, float font_size, HorizontalLayout hl)
 {
-    ScopedFontScale fontScale(style.fontScale);
-
+    ScopedFontScale fontScale(font_size);
     ImVec2 textSize = ImGui::CalcTextSize(text);   // already reflects style.fontScale -- no further scaling needed
+    textSize.y += 10 + style.padding.y;
     float cursorPosX{0.0f};
 
     switch (hl)
@@ -80,9 +83,9 @@ void UIWidgets::Label(const char* text, const UIStyle& style, HorizontalLayout h
     ImGui::Dummy(ImVec2(0.0f, style.padding.y));
 }
 
-bool UIWidgets::Slider(const char* label, float* value, float min, float max, const UIStyle& style, float width, HorizontalLayout hl)
+bool UIWidgets::Slider(const char* label, float* value, float min, float max, float font_size, float width, HorizontalLayout hl)
 {
-    ScopedFontScale fontScale(style.fontScale);
+    ScopedFontScale fontScale(font_size);
     ImVec2 textSize = ImGui::CalcTextSize(label);
 
     if (width > 0.0f)
@@ -124,12 +127,12 @@ bool UIWidgets::Slider(const char* label, float* value, float min, float max, co
     return changed;
 }
 
-bool UIWidgets::InputField(const char* label, char* buffer, size_t bufferSize, const UIStyle& style, HorizontalLayout hl)
+bool UIWidgets::InputField(const char* label, char* buffer, size_t bufferSize, float font_size, HorizontalLayout hl)
 {
-    ScopedFontScale fontScale(style.fontScale);
+    ScopedFontScale fontScale(font_size);
 
     ImVec2 textSize = ImGui::CalcTextSize(label);
-    textSize.x *= style.fontScale;
+    textSize.x *= font_size;
 
     float boxWidth = ImGui::CalcItemWidth()/3.0f;
     float spacing  = ImGui::GetStyle().ItemInnerSpacing.x;
@@ -173,11 +176,10 @@ bool UIWidgets::InputField(const char* label, char* buffer, size_t bufferSize, c
 
 bool UIWidgets::Checkbox(
     const char* label,
-    bool* value,
-    const UIStyle& style,
+    bool* value, float font_size,
     HorizontalLayout hl)
 {
-    ScopedFontScale fontScale(style.fontScale);
+    ScopedFontScale fontScale(font_size);
 
     ImVec2 textSize = ImGui::CalcTextSize(label);
 
@@ -248,4 +250,32 @@ bool UIWidgets::Checkbox(
     ImGui::PopStyleVar(2);
 
     return changed;
+}
+
+void UIWidgets::OnlineMatch(const char *match_name, const char *player_count, std::function<void()> fun, float font_size)
+{
+    float display_width = ImGui::GetWindowWidth();
+    ScopedFontScale fontScale(font_size);
+    ImVec2 match_name_size = ImGui::CalcTextSize(match_name);
+    match_name_size.y += 10 + style.padding.y;
+
+    ImGui::Text("%s", match_name);
+
+    std::string player_count_ =  std::string(player_count) + "/2";
+    ImVec2 player_count_size = ImGui::CalcTextSize(player_count);
+    player_count_size.y += 10 + style.padding.y;
+
+    ImGui::SameLine((display_width - player_count_size.x)/2.0f);
+    ImGui::Text("%s", player_count_.c_str());
+
+    std::string join{"Join"};
+    ImVec2 join_size = ImGui::CalcTextSize(join.c_str());
+    join_size.y += 10 + style.padding.y;
+    join_size.x += 2.0f * style.padding.x;
+    ImGui::SameLine(display_width - join_size.x);
+    if (ImGui::Button(join.c_str(), join_size))
+    {
+        fun();
+    }
+    
 }

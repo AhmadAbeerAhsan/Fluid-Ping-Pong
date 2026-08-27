@@ -47,8 +47,10 @@ int main()
     };
 
     screen.reset(new Match(
-        Controller::Keyboard_Player1,
-        Controller::Keyboard_Player2,
+        Controller::PlayerType::Red,
+        Controller::PlayerType::Green,
+        Controller::ControllerType::Keyboard,
+        Controller::ControllerType::Keyboard,
         shared_resolution,
         ui_ptr
     ));
@@ -64,14 +66,18 @@ int main()
         }
     };
 
-    ui_ptr->Navigate_To_Match = std::function<void(int, int)>{
+    ui_ptr->Navigate_To_Match = std::function<void(int, int, int, int)>{
         [&screen, &shared_resolution, &ui_ptr](
             int p1,
-            int p2
+            int p2,
+            int c1,
+            int c2
         ){
             screen.reset(new Match(
-                static_cast<Controller::ControllerType>(p1),
-                static_cast<Controller::ControllerType>(p2),
+                static_cast<Controller::PlayerType>(p1),
+                static_cast<Controller::PlayerType>(p2),
+                static_cast<Controller::ControllerType>(c1),
+                static_cast<Controller::ControllerType>(c2),
                 shared_resolution,
                 ui_ptr
             ));
@@ -94,6 +100,7 @@ int main()
     fullscreen_quad.initializeForGL();
     fullscreen_quad.UpdateModelMatrix();
 
+    appWindow.UpdateWindowPreMature();
     try
     {
         while (!appWindow.shouldClose())
@@ -125,6 +132,7 @@ int main()
     catch(const std::exception& e)
     {
         std::cout << e.what() << '\n';
+        std::cout << "Exception caught" << std::endl; 
     }
     
     return 0;

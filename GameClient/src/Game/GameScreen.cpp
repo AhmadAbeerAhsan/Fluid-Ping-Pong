@@ -7,7 +7,7 @@ GameScreen::GameScreen(
     m_displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution)
 {
     m_shared_resolution = shared_resolution;
-    m_ui_ptr = ui_ptr;
+    m_ui = ui_ptr;
 }
 
 GameScreen::~GameScreen()

@@ -22,8 +22,6 @@ HomeScreen::HomeScreen(
     fullscreen_quad.SetShader(m_screen_texture_shader);
     fullscreen_quad.initializeForGL();
     fullscreen_quad.UpdateModelMatrix();
-
-    m_ui_style.fontScale = 2.5f;
 }
 
 HomeScreen::~HomeScreen()
@@ -35,62 +33,118 @@ void HomeScreen::SetupUI()
 {
     GameScreen::SetupUI();
 
-    m_ui_ptr->DrawGlobalSettings();
-    /*
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+    if(!m_ui->m_show_settings)
+    {
+        if(m_show_matchmaking_menu)
+        {
+            DrawOnlineMatchMakingMenu();
+        }
+        else
+        {
+            DrawMenu();
+        }
+    }
+    m_ui->DrawGlobalSettings();
+}
+
+void HomeScreen::DrawMenu()
+{
+    float display_width = m_ui->DisplaySizeX() * 0.8f;
+    float display_height = m_ui->DisplaySizeY() * 0.7;
+    float startx = m_ui->DisplaySizeX() * 0.1f;
+    float starty = m_ui->DisplaySizeY() * 0.1f;
+    ImGui::SetNextWindowPos(ImVec2(startx, starty));
+    ImGui::SetNextWindowSize(ImVec2(display_width, display_height));
 
     ImGuiWindowFlags flags =
         ImGuiWindowFlags_NoDecoration |
-        ImGuiWindowFlags_NoBackground |
         ImGuiWindowFlags_NoSavedSettings;
 
     ImGui::Begin("HomeScreen", nullptr, flags);
 
-    const float menuWidth = 300.0f;
-    const float buttonHeight = 50.0f;
-    const float spacing = 12.0f;
-
     ImGui::SetCursorPosY((ImGui::GetWindowHeight() - 380.0f) * 0.5f);
-    m_ui_style.fontScale = 1.5f;
-    UIWidgets::Label("SPACE HOCKEY", m_ui_style, UIWidgets::HorizontalLayout::Middle);
+    UIWidgets::Label("SPACE HOCKEY", 2.5f, UIWidgets::HorizontalLayout::Middle);
 
     ImGui::Spacing();
     ImGui::Spacing();
 
-    m_ui_style.fontScale = 1.5f;
-    UIWidgets::InputField("Username:", m_player_name, sizeof(m_player_name), m_ui_style, UIWidgets::HorizontalLayout::Middle);
+    UIWidgets::InputField("Username:", m_player_name, sizeof(m_player_name), 1.5f, UIWidgets::HorizontalLayout::Middle);
 
     ImGui::Spacing();
 
-    if (UIWidgets::Button("Human vs Bot", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Human vs Computer", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        m_ui_ptr->SetUsername(m_player_name);
+        m_ui->Username = m_player_name;
         // InitMatch(GameMode::Bot);
     }
-    ImGui::Dummy(ImVec2(0.0f, spacing));
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    if (UIWidgets::Button("Human vs Human", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Human vs Human", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        m_ui_ptr->SetUsername(m_player_name);
-        m_ui_ptr->Navigate_To_Match(0, 1);
+        m_ui->Username = m_player_name;
+        p1 = Controller::PlayerType::Red; p2 = Controller::PlayerType::Green;
+        c1 = Controller::ControllerType::Keyboard; c2 = Controller::ControllerType::Keyboard;
+        m_ui->m_match_requested = true;
     }
-    ImGui::Dummy(ImVec2(0.0f, spacing));
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    if (UIWidgets::Button("Human vs Online Human", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Show Online Matchmaking", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        // Open online matchmaking
+        m_show_matchmaking_menu = true;
     }
-    ImGui::Dummy(ImVec2(0.0f, spacing));
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    if (UIWidgets::Button("Settings", m_ui_style, ImVec2(menuWidth, buttonHeight), UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Settings", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        // Open settings
+        m_ui->m_show_settings = true;
     }
 
     ImGui::End();
-    */
+    
+}
+
+void HomeScreen::DrawOnlineMatchMakingMenu()
+{
+    float display_width = m_ui->DisplaySizeX() * 0.7f;
+    float display_height = m_ui->DisplaySizeY() * 0.7;
+    float startx = m_ui->DisplaySizeX() * 0.15f;
+    float starty = m_ui->DisplaySizeY() * 0.15f;
+    ImGui::SetNextWindowPos(ImVec2(startx, starty));
+    ImGui::SetNextWindowSize(ImVec2(display_width, display_height));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+    ImGui::Begin(
+        "Online Matchmaking -------------", nullptr, ImGuiWindowFlags_NoTitleBar
+    );
+
+    ImGui::SetWindowFontScale(1.5f);
+    std::string back{"Back To Menu"};
+    ImVec2 back_size = ImGui::CalcTextSize(back.c_str());
+    back_size.x += 10;
+    back_size.y += 10;
+    ImGui::SetCursorPosX(display_width - back_size.x);
+    if (ImGui::Button(back.c_str(), back_size))
+    {
+        m_show_matchmaking_menu = false;
+    }
+
+    UIWidgets::InputField("      Match Name:", m_player_name, sizeof(m_player_name), 1.5f, UIWidgets::HorizontalLayout::Left);
+    ImGui::SameLine();
+    if (UIWidgets::Button("Create Match", 1.5f, UIWidgets::HorizontalLayout::Middle))
+    {
+        
+    }
+
+    for (size_t i = 0; i < 3; i++)
+    {
+        ImGui::PushID(static_cast<int>(i));
+        UIWidgets::OnlineMatch("Terri", "1", [](){}, 1.5f);
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+    
+
+    ImGui::End();
+    ImGui::PopStyleColor(); 
 }
 
 void HomeScreen::DrawScene()
@@ -128,4 +182,10 @@ void HomeScreen::ListenKeysPressed()
 
 void HomeScreen::ProcessPendingNavigation()
 {
+    if (m_ui->m_match_requested)
+    {
+        m_ui->m_match_requested = false;
+        m_ui->Navigate_To_Match(p1, p2, c1, c2);
+    }
+    
 }

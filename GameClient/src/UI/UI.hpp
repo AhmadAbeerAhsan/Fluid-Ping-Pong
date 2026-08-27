@@ -9,14 +9,14 @@
 #include <memory>
 #include <functional>
 #include <vector>
+#include <string>
 
 #include "AudioPlayer.hpp"
-#include "State.hpp"
 
 class UI
 {
 public:
-    std::function<void(int, int)> Navigate_To_Match;
+    std::function<void(int, int, int, int)> Navigate_To_Match;
     std::function<void()> Navigate_To_HomeScreen;
 
     float DisplaySizeX(){ return m_io_ptr->DisplaySize.x; }
@@ -25,7 +25,6 @@ public:
 private:
     ImGuiIO* m_io_ptr = nullptr;
     AudioPlayer m_audio_player;
-    State m_app_state;
 
 public:
     UI(GLFWwindow* window);
@@ -33,10 +32,6 @@ public:
 
     void SetupUI();
     void RenderUI();
-
-    // State Functions
-    std::string Username(){ return m_app_state.Username(); }
-    void SetUsername(std::string username){ m_app_state.SetUsername(username); }
 
     void PlayBgMusic(){ m_audio_player.playMusic(); }
     void StopBgMusic(){ m_audio_player.stopMusic(); }
@@ -58,21 +53,18 @@ public:
     void Label(const char* text, ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
     // Match HUD -- left name, centered score, right name. No clock.
+    bool m_home_requested{false};
+    bool m_match_requested{false};
     void DrawScoreHUD(const std::string& leftName, int leftScore,
                        const std::string& rightName, int rightScore);
 
     bool m_show_audio_settings{true};
-    bool m_show_red_controls_settings{true};
-    bool m_show_green_controls_settings{true};
-    bool m_show_camera_settings{true};
-    bool m_show_game_settings{true};
-    UIStyle m_settings_uistyle{};
     bool m_show_settings{false};
-    bool m_home_requested{false};
     std::vector<std::string> Red_Controls_Button{"W", "S", "D", "A"};
     std::vector<std::string> Green_Controls_Button{"I", "L", "K", "J"};
     std::string CreateDirectionString(bool is_red);
     std::vector<std::string> Controls_Direction{"Forward", "Right", "Down", "Left"};
     
-    void DrawGlobalSettings(std::function<void()> fun = {});
+    std::string Username{""};
+    void DrawGlobalSettings(std::function<void()> fun = {[](){}});
 };

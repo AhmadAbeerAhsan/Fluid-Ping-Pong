@@ -17,7 +17,7 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath)
     if (!vShaderFile)
     {
         std::cout << "Error: could not open input file vertex shader" << "\n";
-        std::exit(1);
+        //std::exit(1);
     }
 
     std::cout << "Opening fragment shader" << "\n";
@@ -25,7 +25,7 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath)
     if (!fShaderFile)
     {
         std::cout << "Error: could not open input file fragment shader" << "\n";
-        std::exit(1);
+        //std::exit(1);
     }
 
     std::cout << "Reading shaders..." << "\n";

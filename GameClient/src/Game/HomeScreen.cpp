@@ -3,9 +3,10 @@
 HomeScreen::HomeScreen(
     std::shared_ptr<glm::ivec2>& shared_resolution,
     std::shared_ptr<UI>& ui_ptr,
+    std::shared_ptr<Connection>& con,
     std::string texture_path
 ) :
-    GameScreen(shared_resolution, ui_ptr),
+    GameScreen(shared_resolution, ui_ptr, con),
     m_texture(texture_path.c_str())
 {
     std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
@@ -127,11 +128,42 @@ void HomeScreen::DrawOnlineMatchMakingMenu()
         m_show_matchmaking_menu = false;
     }
 
-    UIWidgets::InputField("      Match Name:", m_player_name, sizeof(m_player_name), 1.5f, UIWidgets::HorizontalLayout::Left);
+    std::string refresh{"Refresh List"};
+    ImVec2 refresh_size = ImGui::CalcTextSize(back.c_str());
+    refresh_size.x += 10;
+    refresh_size.y += 10;
+    ImGui::SameLine((display_width - refresh_size.x)/2.0f);
+    if (ImGui::Button(refresh.c_str(), refresh_size))
+    {
+        std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+            std::format(
+                "{}{}",
+                contract(Action::ListSessions),contract(Action::EndDeliminator)
+            )
+        )};
+        m_con->tcpC.Send(connect_message, true);
+    }
+
+    UIWidgets::InputField("      Match Name:", m_match_name, sizeof(m_match_name), 1.5f, UIWidgets::HorizontalLayout::Left);
     ImGui::SameLine();
     if (UIWidgets::Button("Create Match", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        
+        std::shared_ptr<std::string> message{std::make_shared<std::string>(m_match_name)};
+        if (!message->empty())
+        {
+            std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+                std::format(
+                    "{}{}{}{}",
+                    contract(Action::Create),contract(Action::Deliminator),
+                    *message,contract(Action::EndDeliminator)
+                )
+            )};
+            m_con->tcpC.Send(connect_message, true);
+        }
+        else
+        {
+            std::cout << "Create Match::message->empty()" << std::endl;
+        }
     }
 
     for (size_t i = 0; i < 3; i++)

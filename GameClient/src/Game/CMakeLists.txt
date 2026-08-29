@@ -15,5 +15,5 @@ target_link_libraries(Game
     glm
     Renderer
     UI
-    ClientServerContract
+    connection
 )

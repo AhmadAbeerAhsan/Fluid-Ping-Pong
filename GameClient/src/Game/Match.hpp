@@ -63,7 +63,8 @@ public:
         Controller::PlayerType player1_type, Controller::PlayerType player2_type,
         Controller::ControllerType player1_controller, Controller::ControllerType player2_controller,
         std::shared_ptr<glm::ivec2>& shared_resolution,
-        std::shared_ptr<UI>& ui_ptr
+        std::shared_ptr<UI>& ui_ptr,
+        std::shared_ptr<Connection>& con
     );
     ~Match() override;
 

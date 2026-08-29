@@ -4,8 +4,9 @@ Match::Match(
     Controller::PlayerType player1_type, Controller::PlayerType player2_type,
     Controller::ControllerType player1_controller, Controller::ControllerType player2_controller,
     std::shared_ptr<glm::ivec2>& shared_resolution,
-    std::shared_ptr<UI>& ui_ptr
-) : GameScreen(shared_resolution, ui_ptr),
+    std::shared_ptr<UI>& ui_ptr,
+    std::shared_ptr<Connection>& con
+) : GameScreen(shared_resolution, ui_ptr, con),
     m_player_red(player1_type, player1_controller), m_player_green(player2_type, player2_controller),
     m_snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution),
     m_pointLight(m_shared_resolution),

@@ -10,6 +10,11 @@
 class GameSession
 {
 public:
+    enum SessionType{
+        Offline,
+        Online
+    };
+
     GameSession();
 
     float ElapsedSeconds() const;

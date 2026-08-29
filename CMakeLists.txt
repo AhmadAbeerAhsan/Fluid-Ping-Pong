@@ -24,6 +24,4 @@ add_subdirectory(external/miniaudio)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/assimp)
 
-add_subdirectory(ClientServerContract)
-add_subdirectory(GameServer)
 add_subdirectory(GameClient)

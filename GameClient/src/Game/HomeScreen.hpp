@@ -13,7 +13,8 @@ private:
     Shader m_screen_texture_shader;
     Model fullscreen_quad {};
     
-    char m_player_name[64] = "";
+    char m_player_name[32] = "";
+    char m_match_name[32] = "";
     bool m_show_matchmaking_menu{false};
     int p1, p2, c1, c2;
 
@@ -21,6 +22,7 @@ public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr,
+        std::shared_ptr<Connection>& con,
         std::string texture_path
     );
     ~HomeScreen() override;

@@ -16,8 +16,13 @@
 
 #include <chrono>
 
+#include "Connection/Connection.cpp"
+
 int main()
 {
+    std::shared_ptr<Connection> con{std::make_shared<Connection>()};
+    auto work_guard = boost::asio::make_work_guard(con->io);
+    std::thread io_thread([&]{ con->Run(); });
     int screen_width {1920}, screen_height {1080};
     std::shared_ptr<glm::ivec2> shared_resolution{std::make_shared<glm::ivec2>(screen_width, screen_height)};
 
@@ -27,6 +32,7 @@ int main()
     std::shared_ptr<GameScreen> screen{std::make_shared<HomeScreen>(
         shared_resolution,
         ui_ptr,
+        con,
         "GameClient/assets/textures/base.png"
     )};
         
@@ -52,22 +58,24 @@ int main()
         Controller::ControllerType::Keyboard,
         Controller::ControllerType::Keyboard,
         shared_resolution,
-        ui_ptr
+        ui_ptr,
+        con
     ));
 
     
     ui_ptr->Navigate_To_HomeScreen = std::function<void()>{
-        [&screen, &shared_resolution, &ui_ptr](){
+        [&screen, &shared_resolution, &ui_ptr, &con](){
             screen.reset(new HomeScreen(
                 shared_resolution,
                 ui_ptr,
+                con,
                 "GameClient/assets/textures/base.png"
             ));
         }
     };
 
     ui_ptr->Navigate_To_Match = std::function<void(int, int, int, int)>{
-        [&screen, &shared_resolution, &ui_ptr](
+        [&screen, &shared_resolution, &ui_ptr, &con](
             int p1,
             int p2,
             int c1,
@@ -79,7 +87,8 @@ int main()
                 static_cast<Controller::ControllerType>(c1),
                 static_cast<Controller::ControllerType>(c2),
                 shared_resolution,
-                ui_ptr
+                ui_ptr,
+                con
             ));
         }
     };
@@ -135,5 +144,11 @@ int main()
         std::cout << "Exception caught" << std::endl; 
     }
     
+    boost::system::error_code ec;
+    con->udpC.Close();
+    work_guard.reset();
+    con->io.stop();
+    io_thread.join();
+
     return 0;
 }

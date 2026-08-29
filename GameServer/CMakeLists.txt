@@ -1,2 +1,0 @@
-add_executable(GameServer src/main.cpp)
-target_link_libraries(GameServer PRIVATE ClientServerContract)

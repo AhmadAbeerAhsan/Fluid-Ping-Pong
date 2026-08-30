@@ -693,8 +693,8 @@ void Match::SetupUI()
 void Match::SetupScoreBar()
 {
     m_ui->DrawScoreHUD(
-        m_ui->Username, m_gamesession.PlayerRedScore(),
-        m_gamesession.PlayerGreenName(), m_gamesession.PlayerGreenScore()
+        "Player Red", m_gamesession.PlayerRedScore(),
+        "Player Green", m_gamesession.PlayerGreenScore()
     );
 }
 

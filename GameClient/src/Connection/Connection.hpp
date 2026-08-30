@@ -2,7 +2,9 @@
 
 #include "UdpClient.hpp"
 #include "TcpClient.hpp"
-#include <queue>
+#include "SWSRSlidingWindow.hpp"
+#include "GameSession.hpp"
+#include "GameEvent.hpp"
 
 class Connection
 {
@@ -15,4 +17,8 @@ public:
     boost::asio::io_context io;
     UdpClient udpC;
     TcpClient tcpC;
+
+    SWSRSlidingWindow<GameEventData> game_events{};
+    SWSRSlidingWindow<GameSessionData> game_sessions{};
+    SWSRSlidingWindow<ErrorData> error_messages{};
 };

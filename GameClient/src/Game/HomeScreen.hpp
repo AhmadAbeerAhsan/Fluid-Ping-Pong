@@ -18,6 +18,9 @@ private:
     bool m_show_matchmaking_menu{false};
     int p1, p2, c1, c2;
 
+    int joining_id{-1};
+    std::vector<GameSessionData> game_sessions{};
+    void RefreshOnlineGameSessionList();
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

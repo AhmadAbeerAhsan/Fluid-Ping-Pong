@@ -11,6 +11,7 @@ add_library(connection
     TcpClient.cpp
     UdpClient.cpp
     TcpConnection.cpp
+    SWSRSlidingWindow.cpp
 )
 
 target_include_directories(connection PUBLIC

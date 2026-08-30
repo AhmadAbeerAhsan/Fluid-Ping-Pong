@@ -1,9 +1,16 @@
 #include "GameSession.hpp"
 
-GameSession::GameSession()
+GameSession::GameSession() :
+    m_data()
 {
-    m_start_time = std::chrono::steady_clock::now();
+    m_session_type = SessionType::Offline;
     std::cout << "Game Session Started!" << std::endl;
+}
+
+GameSession::GameSession(const ConnectionBuf &buf, size_t buf_len) :
+    m_data(buf, buf_len)
+{
+    m_session_type = SessionType::Online;
 }
 
 float GameSession::ElapsedSeconds() const
@@ -15,11 +22,11 @@ std::string GameSession::WhoWon()
 {
     if (m_player_red_score >= m_max_score)
     {
-        return m_player_red_name;
+        return "Player Red Won";
     }
     if (m_player_green_score >= m_max_score)
     {
-        return m_player_green_name;
+        return "Player Green Won";;
     }
     return "";
 }

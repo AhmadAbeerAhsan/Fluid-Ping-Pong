@@ -1,13 +1,23 @@
 #include "HomeScreen.hpp"
 
+void HomeScreen::RefreshOnlineGameSessionList()
+{
+    game_sessions.clear();
+    std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+        std::format(
+            "{}{}",
+            contract(Action::ListSessions),contract(Action::EndDeliminator)
+        )
+    )};
+    m_con->tcpC.Send(connect_message, true);
+}
+
 HomeScreen::HomeScreen(
-    std::shared_ptr<glm::ivec2>& shared_resolution,
-    std::shared_ptr<UI>& ui_ptr,
-    std::shared_ptr<Connection>& con,
-    std::string texture_path
-) :
-    GameScreen(shared_resolution, ui_ptr, con),
-    m_texture(texture_path.c_str())
+    std::shared_ptr<glm::ivec2> &shared_resolution,
+    std::shared_ptr<UI> &ui_ptr,
+    std::shared_ptr<Connection> &con,
+    std::string texture_path) : GameScreen(shared_resolution, ui_ptr, con),
+                                m_texture(texture_path.c_str())
 {
     std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
     m_screen_texture_shader = Shader{"GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl"};
@@ -92,6 +102,7 @@ void HomeScreen::DrawMenu()
     if (UIWidgets::Button("Show Online Matchmaking", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
         m_show_matchmaking_menu = true;
+        RefreshOnlineGameSessionList();
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
@@ -135,13 +146,7 @@ void HomeScreen::DrawOnlineMatchMakingMenu()
     ImGui::SameLine((display_width - refresh_size.x)/2.0f);
     if (ImGui::Button(refresh.c_str(), refresh_size))
     {
-        std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
-            std::format(
-                "{}{}",
-                contract(Action::ListSessions),contract(Action::EndDeliminator)
-            )
-        )};
-        m_con->tcpC.Send(connect_message, true);
+        RefreshOnlineGameSessionList();
     }
 
     UIWidgets::InputField("      Match Name:", m_match_name, sizeof(m_match_name), 1.5f, UIWidgets::HorizontalLayout::Left);
@@ -166,10 +171,15 @@ void HomeScreen::DrawOnlineMatchMakingMenu()
         }
     }
 
-    for (size_t i = 0; i < 3; i++)
+    for (size_t i = 0; i < game_sessions.size(); i++)
     {
         ImGui::PushID(static_cast<int>(i));
-        UIWidgets::OnlineMatch("Terri", "1", [](){}, 1.5f);
+        UIWidgets::OnlineMatch(
+            game_sessions[i].MatchName(),
+            std::to_string(game_sessions[i].PlayerCount()).data(),
+            [](){},
+            1.5f
+        );
         ImGui::Spacing();
         ImGui::PopID();
     }
@@ -210,6 +220,14 @@ void HomeScreen::OnKeyPressed(GLFWwindow *window_ptr)
 
 void HomeScreen::ListenKeysPressed()
 {
+    GameSessionData new_game_session_data;
+    while (m_con->game_sessions.Read(new_game_session_data))
+    {
+        std::cout << std::format(
+            "{} {}\n", "Read From Window:", new_game_session_data.EncodeBuffer()
+        );
+        game_sessions.push_back(new_game_session_data);
+    }
 }
 
 void HomeScreen::ProcessPendingNavigation()

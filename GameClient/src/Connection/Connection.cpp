@@ -1,8 +1,8 @@
 #include "Connection.hpp"
 
 Connection::Connection():
-    udpC(io),
-    tcpC(io)
+    udpC(io, game_events),
+    tcpC(io, game_sessions, error_messages)
 {
 }
 

@@ -41,6 +41,14 @@ constexpr char contract(Action c) {
     return '#'; // Handle invalid values  
 }
 
+class ParseException : public std::runtime_error
+{
+public:
+    explicit ParseException(const std::string& message)
+        : std::runtime_error(message)
+    {}
+};
+
 inline int ParseIntegerKnownRange(
     const ConnectionBuf& buf,
     size_t start,
@@ -49,13 +57,26 @@ inline int ParseIntegerKnownRange(
 )
 {
     if (start + range_size > len)
-        return -1;
+        throw ParseException(std::format(
+            "ParseIntegerKnownRange: range [{}, {}) exceeds buffer length {}",
+            start, start + range_size, len
+        ));
 
     int id = 0;
     auto result = std::from_chars(buf.data() + start, buf.data() + start + range_size, id);
 
-    if (result.ec != std::errc() || result.ptr != buf.data() + start + range_size)
-        return -1;
+    if (result.ec != std::errc())
+        throw ParseException(std::format(
+            "ParseIntegerKnownRange: failed to parse integer at [{}, {}): {}",
+            start, start + range_size,
+            result.ec == std::errc::invalid_argument ? "not a number" : "value out of int range"
+        ));
+    
+    if(result.ptr != buf.data() + start + range_size)
+        throw ParseException(std::format(
+            "ParseIntegerKnownRange: trailing garbage after integer, parsed {} of {} chars",
+            result.ptr - (buf.data() + start), range_size
+        ));
 
     return id;
 }
@@ -75,17 +96,23 @@ inline int ParseIntegerTillDeliminator(
         {
             deliminator_found = true;
             if(start_next == digits_end)
-                return -1;
+                throw ParseException("ParseIntegerTillDeliminator: empty field");
             break;
         }
         ++digits_end;
     }
     
+    if (!deliminator_found)
+        throw ParseException("ParseIntegerTillDeliminator: deliminator not found");
+
     int id = 0;
     auto result = std::from_chars(buf.data() + start_next, buf.data() + digits_end, id);
 
-    if (result.ec != std::errc() || result.ptr != buf.data() + digits_end || !deliminator_found)
-        return -1;
+    if (result.ec != std::errc() || result.ptr != buf.data() + digits_end)
+        throw ParseException(std::format(
+            "ParseIntegerTillDeliminator: failed to parse integer at [{}, {})",
+            start_next, digits_end
+        ));
 
     start_next = digits_end + 1;
     return id;
@@ -107,20 +134,23 @@ inline int ParseMatchNameTillDeliminator(
         {
             deliminator_found = true;
             if(start_next == field_end)
-                return -1;
+                throw ParseException("ParseMatchNameTillDeliminator: empty field");
             break;
         }
         ++field_end;
     }
 
     if (!deliminator_found)
-        return -1;
+        throw ParseException("ParseMatchNameTillDeliminator: deliminator not found");
 
     std::size_t field_len{field_end - start_next};
 
     // -1 to leave room for the null terminator below
     if (field_len >= match_name_buf_size)
-        return -1; // name too long for the destination buffer
+        throw ParseException(std::format(
+            "ParseMatchNameTillDeliminator: name length {} exceeds buffer size {}",
+            field_len, match_name_buf_size
+        ));
 
     std::memcpy(match_name_buf.data(), buf.data() + start_next, field_len);
     match_name_buf[field_len] = '\0';
@@ -146,20 +176,23 @@ inline int ParseConnectionMessageTillDeliminator(
         {
             deliminator_found = true;
             if(start_next == field_end)
-                return -1;
+                throw ParseException("ParseConnectionMessageTillDeliminator: empty field");
             break;
         }
         ++field_end;
     }
 
     if (!deliminator_found)
-        return -1;
+        throw ParseException("ParseConnectionMessageTillDeliminator: deliminator not found");
 
     std::size_t field_len{field_end - start_next};
 
     // -1 to leave room for the null terminator below
     if (field_len >= conn_buf_size)
-        return -1; // name too long for the destination buffer
+        throw ParseException(std::format(
+            "ParseConnectionMessageTillDeliminator: field length {} exceeds buffer size {}",
+            field_len, conn_buf_size
+        ));
 
     std::memcpy(dst_connectionBuf_buf.data(), buf.data() + start_next, field_len);
     dst_connectionBuf_buf[field_len] = '\0';
@@ -193,6 +226,12 @@ public:
     void DecreamentPlayerCount(){player_count--;}
     int PlayerCount(){return player_count;}
     const char* MatchName(){ return m_match_name_buf.data(); }
+    int MatchId(){ return match_id; }
+    int RedScore(){ return red_score; }
+    int GreenScore(){ return green_score; }
+    void AddRedScore(){ red_score++; }
+    void AddGreenScore(){ green_score++; }
+    void Reset() { red_score = 0; green_score = 0; }
 
     std::string EncodeBuffer() const
     {
@@ -221,18 +260,23 @@ public:
 class GameEventData
 {
 public:
-    enum PlayerType : int
+    static constexpr float factor{1000.f};
+    enum ObjectType : int
     {
         Red = 0,
-        Green = 1
+        Green = 1,
+        Ball = 2
     };
-    int match_id{0};
-    int player_type{0};
-    int red_score{0};
-    int green_score{0};
-    int player_pos{0};
-    int player_vel{0};
-    int time_stamp_sec{0};
+    int m_match_id{0};
+    int m_player_type{0};
+    int m_red_score{0};
+    int m_green_score{0};
+    int m_player_pos_x{0};
+    int m_player_pos_z{0};
+    int m_player_vel_x{0};
+    int m_player_vel_z{0};
+    int m_time_stamp_now_ms{0};
+    int m_lag_ms{0};
 
     GameEventData() {}
 
@@ -241,34 +285,69 @@ public:
         DecodeBuffer(buf, buf_len);
     }
 
+    GameEventData(
+        const int& match_id,
+        const int& player_type,
+        const int& red_score,
+        const int& green_score,
+        int player_pos_x,
+        int player_pos_z,
+        int player_vel_x,
+        int player_vel_z,
+        int time_stamp_now_ms,
+        int lag_ms
+    ):
+        m_match_id{match_id},
+        m_player_type{player_type},
+        m_red_score{red_score},
+        m_green_score{green_score},
+        m_player_pos_x{player_pos_x},
+        m_player_pos_z{player_pos_z},
+        m_player_vel_x{player_vel_x},
+        m_player_vel_z{player_vel_z},
+        m_time_stamp_now_ms{time_stamp_now_ms},
+        m_lag_ms{lag_ms}
+    {
+    }
+
     std::string EncodeBuffer() const
     {
         return std::format(
-            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-            contract(Action::Success),   contract(Action::Deliminator),
+            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             contract(Action::MatchEvent),contract(Action::Deliminator),
-            match_id,                    contract(Action::Deliminator),
-            player_type,                 contract(Action::Deliminator),
-            red_score,                   contract(Action::Deliminator),
-            green_score,                 contract(Action::Deliminator),
-            player_pos,                  contract(Action::Deliminator),
-            player_vel,                  contract(Action::Deliminator),
-            time_stamp_sec,              contract(Action::EndDeliminator)
+            m_match_id,                  contract(Action::Deliminator),
+            m_player_type,               contract(Action::Deliminator),
+            m_red_score,                 contract(Action::Deliminator),
+            m_green_score,               contract(Action::Deliminator),
+            m_player_pos_x,              contract(Action::Deliminator),
+            m_player_pos_z,              contract(Action::Deliminator),
+            m_player_vel_x,              contract(Action::Deliminator),
+            m_player_vel_z,              contract(Action::Deliminator),
+            m_time_stamp_now_ms,         contract(Action::Deliminator),
+            m_lag_ms,                    contract(Action::EndDeliminator)
         );
     }
 
     void DecodeBuffer(const ConnectionBuf& buf, size_t buf_len)
     {
-        size_t next_start{4};
-        match_id       = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        player_type    = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        red_score      = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        green_score    = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        player_pos     = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        player_vel     = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
-        time_stamp_sec = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::EndDeliminator));
+        size_t next_start{2};
+        m_match_id       = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_player_type    = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_red_score      = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_green_score    = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_player_pos_x   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_player_pos_z   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_player_vel_x   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_player_vel_z   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_time_stamp_now_ms = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_lag_ms         = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::EndDeliminator));
     }
 };
+
+inline bool AreTwins(const GameEventData& a, const GameEventData& b)
+{
+    return a.m_time_stamp_now_ms == b.m_time_stamp_now_ms;
+}
 
 class ErrorData
 {

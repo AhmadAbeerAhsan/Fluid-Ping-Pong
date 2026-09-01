@@ -2,6 +2,7 @@
 
 #include "GameScreen.hpp"
 #include "Controller.hpp"
+#include "Match.hpp"
 #include "../Renderer/Texture.hpp"
 #include "../Renderer/Model.hpp"
 #include "../Renderer/Shader.hpp"
@@ -16,11 +17,13 @@ private:
     char m_player_name[32] = "";
     char m_match_name[32] = "";
     bool m_show_matchmaking_menu{false};
-    int p1, p2, c1, c2;
+    int c1, c2;
+    Match::MatchType m_match_type;
 
-    int joining_id{-1};
+    GameSessionData joining_session{};
     std::vector<GameSessionData> game_sessions{};
     void RefreshOnlineGameSessionList();
+    void SendJoinReq(int match_id);
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

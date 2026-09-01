@@ -3,7 +3,6 @@
 #include "UdpClient.hpp"
 #include "TcpClient.hpp"
 #include "SWSRSlidingWindow.hpp"
-#include "GameSession.hpp"
 #include "GameEvent.hpp"
 
 class Connection

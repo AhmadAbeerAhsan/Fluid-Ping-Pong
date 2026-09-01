@@ -12,6 +12,21 @@ void HomeScreen::RefreshOnlineGameSessionList()
     m_con->tcpC.Send(connect_message, true);
 }
 
+void HomeScreen::SendJoinReq(int match_id)
+{
+    std::cout << std::format(
+        "MatchId: {}, JoiningId:{}\n", match_id, joining_session.MatchId()
+    );
+    std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+        std::format(
+            "{}{}{}{}",
+            contract(Action::Join), contract(Action::Deliminator),
+            match_id,               contract(Action::EndDeliminator)
+        )
+    )};
+    m_con->udpC.StartSend(connect_message);
+}
+
 HomeScreen::HomeScreen(
     std::shared_ptr<glm::ivec2> &shared_resolution,
     std::shared_ptr<UI> &ui_ptr,
@@ -93,8 +108,7 @@ void HomeScreen::DrawMenu()
     if (UIWidgets::Button("Human vs Human", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
         m_ui->Username = m_player_name;
-        p1 = Controller::PlayerType::Red; p2 = Controller::PlayerType::Green;
-        c1 = Controller::ControllerType::Keyboard; c2 = Controller::ControllerType::Keyboard;
+        c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Keyboard2;
         m_ui->m_match_requested = true;
     }
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -177,7 +191,7 @@ void HomeScreen::DrawOnlineMatchMakingMenu()
         UIWidgets::OnlineMatch(
             game_sessions[i].MatchName(),
             std::to_string(game_sessions[i].PlayerCount()).data(),
-            [](){},
+            [this, i](){ joining_session = game_sessions[i]; SendJoinReq( game_sessions[i].MatchId()); },
             1.5f
         );
         ImGui::Spacing();
@@ -228,6 +242,41 @@ void HomeScreen::ListenKeysPressed()
         );
         game_sessions.push_back(new_game_session_data);
     }
+
+    GameEventData new_game_event_data;
+    while (m_con->game_events.Read(new_game_event_data))
+    {
+        std::cout << std::format(
+            "{} {}\n", "Read From Window:", new_game_event_data.EncodeBuffer()
+        );
+        std::cout << std::format(
+            "MatchId: {}, JoiningId:{}\n", new_game_event_data.m_match_id, joining_session.MatchId()
+        );
+        if (new_game_event_data.m_match_id == joining_session.MatchId())
+        {
+            if (new_game_event_data.m_player_type == GameEventData::ObjectType::Red)
+            {
+                c1 = Controller::ControllerType::Online; c2 = Controller::ControllerType::Keyboard1;
+                m_match_type = Match::MatchType::Online;
+                m_ui->m_match_requested = true;
+            }
+            else if (new_game_event_data.m_player_type == GameEventData::ObjectType::Green)
+            {
+                c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Online;
+                m_match_type = Match::MatchType::Online;
+                m_ui->m_match_requested = true;
+            } 
+        }
+        
+    }
+
+    ErrorData e;
+    while (m_con->error_messages.Read(e))
+    {
+        std::cout << std::format(
+            "{} {}\n", "Read From Window:", e.EncodeBuffer()
+        );
+    }
 }
 
 void HomeScreen::ProcessPendingNavigation()
@@ -235,7 +284,6 @@ void HomeScreen::ProcessPendingNavigation()
     if (m_ui->m_match_requested)
     {
         m_ui->m_match_requested = false;
-        m_ui->Navigate_To_Match(p1, p2, c1, c2);
+        m_ui->Navigate_To_Match(c1, c2, m_match_type, joining_session);
     }
-    
 }

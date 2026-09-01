@@ -8,6 +8,8 @@
 #include "GameAssetsGenerator.hpp"
 #include "../UI/UI.hpp"
 #include "../Connection/Connection.hpp"
+#include "../Connection/ClientServerContract.hpp"
+
 #include <format>
 
 class GameScreen

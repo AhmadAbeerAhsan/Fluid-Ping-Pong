@@ -8,6 +8,7 @@ add_library(
     HomeScreen.cpp
     BoundaryCircle.cpp
     BoundaryLine.cpp
+    LocalPlayerGameEventWindow.cpp
 )
 
 target_link_libraries(Game

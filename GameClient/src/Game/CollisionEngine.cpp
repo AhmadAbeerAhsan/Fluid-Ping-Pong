@@ -94,6 +94,7 @@ void CollisionEngine::ResolvePlayerCircleToCicleCollision(std::shared_ptr<Bounda
             c1_ptr->Tranaslate(-n * penetration);
         }
     }
+    SendBallEventsToServer();
 }
 
 void CollisionEngine::ResolveBoundaryLineToCicleCollision(std::shared_ptr<Boundary> &l1_ptr, std::shared_ptr<Boundary> &c2_ptr)

@@ -12,11 +12,12 @@
 #include <string>
 
 #include "AudioPlayer.hpp"
+#include "../Connection/ClientServerContract.hpp"
 
 class UI
 {
 public:
-    std::function<void(int, int, int, int)> Navigate_To_Match;
+    std::function<void(int, int, int, GameSessionData)> Navigate_To_Match;
     std::function<void()> Navigate_To_HomeScreen;
 
     float DisplaySizeX(){ return m_io_ptr->DisplaySize.x; }

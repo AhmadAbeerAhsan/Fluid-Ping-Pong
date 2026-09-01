@@ -53,13 +53,13 @@ int main()
     };
 
     screen.reset(new Match(
-        Controller::PlayerType::Red,
-        Controller::PlayerType::Green,
-        Controller::ControllerType::Keyboard,
-        Controller::ControllerType::Keyboard,
+        Controller::ControllerType::Keyboard1,
+        Controller::ControllerType::Keyboard2,
         shared_resolution,
         ui_ptr,
-        con
+        con,
+        Match::MatchType::Offline,
+        GameSessionData()
     ));
 
     
@@ -74,21 +74,21 @@ int main()
         }
     };
 
-    ui_ptr->Navigate_To_Match = std::function<void(int, int, int, int)>{
+    ui_ptr->Navigate_To_Match = std::function<void(int, int, int, GameSessionData)>{
         [&screen, &shared_resolution, &ui_ptr, &con](
-            int p1,
-            int p2,
             int c1,
-            int c2
+            int c2,
+            int match_type,
+            GameSessionData g
         ){
             screen.reset(new Match(
-                static_cast<Controller::PlayerType>(p1),
-                static_cast<Controller::PlayerType>(p2),
                 static_cast<Controller::ControllerType>(c1),
                 static_cast<Controller::ControllerType>(c2),
                 shared_resolution,
                 ui_ptr,
-                con
+                con,
+                static_cast<Match::MatchType>(match_type),
+                g
             ));
         }
     };

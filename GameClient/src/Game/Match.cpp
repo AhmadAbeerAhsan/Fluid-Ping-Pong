@@ -1,27 +1,108 @@
 #include "Match.hpp"
 
 Match::Match(
-    Controller::PlayerType player1_type, Controller::PlayerType player2_type,
     Controller::ControllerType player1_controller, Controller::ControllerType player2_controller,
     std::shared_ptr<glm::ivec2>& shared_resolution,
     std::shared_ptr<UI>& ui_ptr,
-    std::shared_ptr<Connection>& con
+    std::shared_ptr<Connection>& con,
+    MatchType match_type,
+    GameSessionData game_session_data
 ) : GameScreen(shared_resolution, ui_ptr, con),
-    m_player_red(player1_type, player1_controller), m_player_green(player2_type, player2_controller),
+    m_player_red(GameEventData::ObjectType::Red, player1_controller),
+    m_player_green(GameEventData::ObjectType::Green, player2_controller),
+    old_red_keyboard(player1_controller),
+    old_green_keyboard(player2_controller),
     m_snapshotBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution),
     m_pointLight(m_shared_resolution),
     m_collision_engine{ui_ptr},
-    m_generator{std::random_device{}()}
+    m_generator{std::random_device{}()},
+    m_game_session_data(game_session_data),
+    m_match_type(match_type)
 {
-    InitializePassInputs();
-    DeterminePassInputs();
     InitScene();
+    InitializePassInputs();
     SetUpCollisionEngine();
+    start = std::chrono::steady_clock::now();
 }
 
 Match::~Match()
 {
     std::cout << "Match::~Match()" << std::endl;
+}
+
+void Match::ReadOnlineEvents()
+{
+    GameEventData new_event_data;
+    while (m_con->game_events.Read(new_event_data))
+    {
+        std::cout << std::format(
+            "{} {}\n", "Read From Window:", new_event_data.EncodeBuffer()
+        );
+        if (new_event_data.m_player_type == m_local_player_type)
+        {
+            ProcessLocalPlayerEvents(new_event_data);
+        }
+        else if (new_event_data.m_player_type == m_online_player_type)
+        {
+            ProcessOnlinePlayerEvents(new_event_data);
+        }
+        else if (new_event_data.m_player_type == GameEventData::ObjectType::Ball)
+        {
+            ProcessRecievedBallEvents(new_event_data);
+        }    
+    }
+}
+
+void Match::ProcessLocalPlayerEvents(GameEventData &e)
+{
+    now = std::chrono::steady_clock::now();
+    int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+    m_local_game_event_window.UpdateLag(e, time_elapsed);
+}
+
+void Match::ProcessOnlinePlayerEvents(GameEventData &e)
+{
+    if (m_last_opponent_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
+    {
+        m_last_opponent_game_event = e;
+        online_inputs[0].x = (float)m_last_opponent_game_event.m_player_pos_x / GameEventData::factor;
+        online_inputs[0].y = (float)m_last_opponent_game_event.m_player_pos_z / GameEventData::factor;
+
+        online_inputs[1].x = (float)m_last_opponent_game_event.m_player_vel_x / GameEventData::factor;
+        online_inputs[1].y = (float)m_last_opponent_game_event.m_player_vel_z / GameEventData::factor;
+        
+        online_inputs[2].x = (float)m_last_opponent_game_event.m_lag_ms / GameEventData::factor;
+        online_inputs[2].y = (float)m_local_game_event_window.Lag() / GameEventData::factor;
+    }
+    
+}
+
+void Match::ProcessRecievedBallEvents(GameEventData &e)
+{
+    if (m_last_recieved_ball_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
+    {
+        glm::vec2 new_pos = glm::vec2(m_last_recieved_ball_game_event.m_player_pos_x, m_last_recieved_ball_game_event.m_player_pos_z)/GameEventData::factor;
+        if (!Compare(new_pos.x, 0.0f))
+        {
+            return;
+        }
+        
+        m_last_recieved_ball_game_event = e;
+        m_boundary_ball_ptr->SetVelocity(
+            glm::vec2(
+                (float)m_last_recieved_ball_game_event.m_player_vel_x / GameEventData::factor,
+                (float)m_last_recieved_ball_game_event.m_player_vel_x / GameEventData::factor
+            )
+        );
+
+        m_boundary_ball_ptr->SetPosition(
+            new_pos +
+            (
+                (float)(m_local_game_event_window.Lag() + m_last_recieved_ball_game_event.m_lag_ms)/GameEventData::factor *
+                m_boundary_ball_ptr->Velocity()
+            )
+        );
+    }
 }
 
 void Match::InitScene()
@@ -408,6 +489,7 @@ void Match::InitScene()
 
 void Match::SetUpCollisionEngine()
 {
+    m_collision_engine.SendBallEventsToServer = SendBallEventsToServer;
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
             m_boundary_red_player_ptr->ClearReflection();
@@ -579,6 +661,9 @@ void Match::ListenKeysPressed()
         m_player_red.ListenInput(PassRedInputs());
         m_player_green.ListenInput(PassGreenInputs());
     }
+    online_inputs[0].x = 0.0f;
+    online_inputs[0].y = 0.0f;
+    ReadOnlineEvents();
 }
 
 void Match::ProcessPendingNavigation()
@@ -657,12 +742,12 @@ void Match::SetupUI()
             {
                 if(isRedMouse)
                 {
-                    GiveMouseControls(Controller::PlayerType::Red);
+                    GiveMouseControls(GameEventData::ObjectType::Red);
                     DeterminePassInputs();
                 }
                 else
                 {
-                    m_player_red.SetControllerType(Controller::ControllerType::Keyboard);
+                    m_player_red.SetControllerType(old_red_keyboard);
                     DeterminePassInputs();
                 }
             }
@@ -677,12 +762,12 @@ void Match::SetupUI()
             {
                 if(isGreenMouse)
                 {
-                    GiveMouseControls(Controller::PlayerType::Green);
+                    GiveMouseControls(GameEventData::ObjectType::Green);
                     DeterminePassInputs();
                 }
                 else
                 {
-                    m_player_green.SetControllerType(Controller::ControllerType::Keyboard);
+                    m_player_green.SetControllerType(old_green_keyboard);
                     DeterminePassInputs();
                 }
             }
@@ -693,8 +778,8 @@ void Match::SetupUI()
 void Match::SetupScoreBar()
 {
     m_ui->DrawScoreHUD(
-        "Player Red", m_gamesession.PlayerRedScore(),
-        "Player Green", m_gamesession.PlayerGreenScore()
+        "Player Red", m_game_session_data.RedScore(),
+        "Player Green", m_game_session_data.GreenScore()
     );
 }
 
@@ -785,21 +870,25 @@ void Match::SpawnGreenWithoutServe(int inverse_r)
 
 void Match::RedScored()
 {
-    m_gamesession.AddPointPlayerRed();
+    m_game_session_data.AddRedScore();
     SpawnGreenWithServe();
     DetermineWinner();
 }
 
 void Match::GreenScored()
 {
-    m_gamesession.AddPointPlayerGreen();
+    m_game_session_data.AddGreenScore();
     SpawnRedWithServe();
     DetermineWinner();
 }
 
 void Match::DetermineWinner()
 {
-    m_winner_name = m_gamesession.WhoWon();
+    
+    if(m_game_session_data.RedScore() > 2)
+        m_winner_name = "Red";
+    if(m_game_session_data.GreenScore() > 2)
+        m_winner_name = "Green";   
     std::cout << "Match::DetermineWinner(): " << m_winner_name << std::endl;
     m_match_running = m_winner_name.empty();
     if (!m_match_running)
@@ -813,7 +902,7 @@ void Match::InitMatch()
 {
     m_match_running = true;
     m_winner_name = "";
-    m_gamesession.Reset();
+    m_game_session_data.Reset();
 
     if (RandomInt(0, 1) == 0)
     {
@@ -831,22 +920,24 @@ int Match::RandomInt(int min, int max)
     return distribution(m_generator);
 }
 
-void Match::GiveMouseControls(Controller::PlayerType player_type)
+void Match::GiveMouseControls(GameEventData::ObjectType player_type)
 {
     switch (player_type)
     {
-    case Controller::PlayerType::Red:
+    case GameEventData::ObjectType::Red:
+        old_red_keyboard = m_player_red.GetControllerType();
         m_player_red.SetControllerType(Controller::ControllerType::Mouse);
         if (m_player_green.GetControllerType() == Controller::ControllerType::Mouse)
         {
-            m_player_green.SetControllerType(Controller::ControllerType::Keyboard);
+            m_player_green.SetControllerType(old_green_keyboard);
         }
         break;
-    case Controller::PlayerType::Green:
+    case GameEventData::ObjectType::Green:
+        old_green_keyboard = m_player_green.GetControllerType();
         m_player_green.SetControllerType(Controller::ControllerType::Mouse);
         if (m_player_red.GetControllerType() == Controller::ControllerType::Mouse)
         {
-            m_player_red.SetControllerType(Controller::ControllerType::Keyboard);
+            m_player_red.SetControllerType(old_red_keyboard);
         }
         break;
     default:
@@ -901,28 +992,130 @@ void Match::InitializePassInputs()
             return m_camera_ptr->Controls_Vector;
         }
     };
+
+    PassOnlineControls = std::function<const std::vector<glm::vec2>()>{
+        [this](){
+            return m_camera_ptr->Controls_Vector;
+        }
+    };
+    SendLocalPlayerDataToServer = std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)>{
+        [](const glm::vec2& pos, const glm::vec2& vel, GameEventData::ObjectType& player_type){
+        }
+    };
+    SendBallEventsToServer = std::function<void()>{
+        [](){
+        }
+    };
+
+    Compare = std::function<bool(float, float)>{
+        [](float x, float y){
+            return true;
+        }
+    };
+
+    if (m_match_type == MatchType::Online)
+    {
+        if (m_player_red.GetControllerType() == Controller::ControllerType::Online)
+        {
+            std::cout << "Match::InitializePassInputs m_boundary_online_player_ptr = m_boundary_red_player_ptr\n";
+            m_boundary_online_player_ptr = m_boundary_red_player_ptr;
+            m_local_player_type = GameEventData::ObjectType::Green;
+            m_online_player_type = GameEventData::ObjectType::Red;
+            Compare = std::greater_equal<float>{};
+        }
+        else if (m_player_green.GetControllerType() == Controller::ControllerType::Online)
+        {
+            std::cout << "Match::InitializePassInputs m_boundary_online_player_ptr = m_boundary_green_player_ptr\n";
+            m_boundary_online_player_ptr = m_boundary_green_player_ptr;
+            m_local_player_type = GameEventData::ObjectType::Red;
+            m_online_player_type = GameEventData::ObjectType::Green;
+            Compare = std::less_equal<float>{};
+        }
+
+        PassOnlineControls = std::function<const std::vector<glm::vec2>()>{
+            [this](){
+               return online_inputs;
+            }
+        };
+        SendLocalPlayerDataToServer = std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)>{
+            [this](const glm::vec2& pos, const glm::vec2& vel, GameEventData::ObjectType& player_type){
+                now = std::chrono::steady_clock::now();
+                int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                GameEventData g{
+                    m_game_session_data.MatchId(),
+                    static_cast<int>(player_type),
+                    m_game_session_data.RedScore(),
+                    m_game_session_data.GreenScore(),
+                    static_cast<int>(pos.x*GameEventData::factor),
+                    static_cast<int>(pos.y*GameEventData::factor),
+                    static_cast<int>(vel.x*GameEventData::factor),
+                    static_cast<int>(vel.y*GameEventData::factor),
+                    time_elapsed,
+                    m_local_game_event_window.Lag()
+                };
+                std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
+                m_con->udpC.StartSend(req);
+                m_local_game_event_window.Push(g);
+            }
+        };
+        SendBallEventsToServer = std::function<void()>{
+        [this](){
+            if(Compare(m_boundary_ball_ptr->Origin().y, 0.0f))
+                return;
+
+            now = std::chrono::steady_clock::now();
+            int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+            GameEventData g{
+                m_game_session_data.MatchId(),
+                static_cast<int>(GameEventData::ObjectType::Ball),
+                m_game_session_data.RedScore(),
+                m_game_session_data.GreenScore(),
+                static_cast<int>(m_boundary_ball_ptr->Origin().x * GameEventData::factor),
+                static_cast<int>(m_boundary_ball_ptr->Origin().y * GameEventData::factor),
+                static_cast<int>(m_boundary_ball_ptr->Velocity().x * GameEventData::factor),
+                static_cast<int>(m_boundary_ball_ptr->Velocity().y * GameEventData::factor),
+                time_elapsed,
+                m_local_game_event_window.Lag()
+            };
+            std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
+            m_con->udpC.StartSend(req);
+            m_local_game_event_window.Push(g);
+            }
+        };
+    }
+    DeterminePassInputs();
 }
 
 void Match::DeterminePassInputs()
 {
     switch (m_player_red.GetControllerType())
     {
-    case Controller::ControllerType::Keyboard:
+    case Controller::ControllerType::Keyboard1:
+    case Controller::ControllerType::Keyboard2:
         PassRedInputs = PassCameraControls;
         break;
     case Controller::ControllerType::Mouse:
         PassRedInputs = PassMouseXZPos;
+        break;
+    case Controller::ControllerType::Online:
+        PassRedInputs = PassOnlineControls;
+        m_player_green.SendData = SendLocalPlayerDataToServer;
         break;
     default:
         break;
     }
     switch (m_player_green.GetControllerType())
     {
-    case Controller::ControllerType::Keyboard:
+    case Controller::ControllerType::Keyboard1:
+    case Controller::ControllerType::Keyboard2:
         PassGreenInputs = PassCameraControls;
         break;
     case Controller::ControllerType::Mouse:
         PassGreenInputs = PassMouseXZPos;
+        break;
+    case Controller::ControllerType::Online:
+        PassGreenInputs = PassOnlineControls;
+        m_player_red.SendData = SendLocalPlayerDataToServer;
         break;
     default:
         break;

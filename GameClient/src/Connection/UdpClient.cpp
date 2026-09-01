@@ -29,7 +29,7 @@ UdpClient::UdpClient(
 
 void UdpClient::StartSend(std::shared_ptr<std::string> message_ptr)
 {
-    std::cout << "UdpClient::StartSend Begin\n";
+    //td::cout << "UdpClient::StartSend Begin\n";
     m_socket.async_send_to(
         boost::asio::buffer(*message_ptr),
         reciever_endpoint,
@@ -39,7 +39,7 @@ void UdpClient::StartSend(std::shared_ptr<std::string> message_ptr)
             message_ptr
         )
     );
-    std::cout << "UdpClient::StartSend End\n";
+    //std::cout << "UdpClient::StartSend End\n";
 }
 
 void UdpClient::Close()
@@ -50,7 +50,7 @@ void UdpClient::Close()
 
 void UdpClient::StartRecieve()
 {
-    std::cout << "UdpClient::StartRecieve Begin\n";
+    //std::cout << "UdpClient::StartRecieve Begin\n";
     std::shared_ptr<udp::endpoint> remote_endpoint_ptr{ std::make_shared<udp::endpoint>() };
     m_socket.async_receive_from(
         boost::asio::buffer(recv_buf),
@@ -62,21 +62,30 @@ void UdpClient::StartRecieve()
             boost::asio::placeholders::bytes_transferred
         )
     );
-    std::cout << "UdpClient::StartRecieve End\n";
+    //std::cout << "UdpClient::StartRecieve End\n";
 }
 
 void UdpClient::HandleRecieve(const boost::system::error_code& ec, std::size_t len)
 {
-    std::cout << "UdpClient::HandleRecieve Begin\n";
+    //std::cout << "UdpClient::HandleRecieve Begin\n";
     if (ec)
     {
         std::cout << "UdpClient::HandleRecieve error: " << ec.message() << std::endl;
     }
 
     recv_len = len;
-    InterpretMessage();
+    
+    try
+    {
+        InterpretMessage();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
     StartRecieve();
-    std::cout << "UdpClient::HandleRecieve End\n";
+    //std::cout << "UdpClient::HandleRecieve End\n";
 }
 
 void UdpClient::InterpretMessage()
@@ -89,8 +98,9 @@ void UdpClient::InterpretMessage()
         return;
     }  
 
-    if (recv_buf[0] == contract(Action::Success) && recv_buf[1] == contract(Action::Deliminator))
+    if (recv_buf[0] == contract(Action::MatchEvent) && recv_buf[1] == contract(Action::Deliminator))
     {
+        std::cout << "UdpClient::InterpretMessage MatchEvent\n";
         GameEventData g{recv_buf, recv_len};
         m_game_events.Push(g);
         return;
@@ -102,5 +112,5 @@ void UdpClient::InterpretMessage()
         m_error_messages.Push(e);
         return;
     }
-    std::cout << "UdpClient::InterpretMessage End\n";
+    //std::cout << "UdpClient::InterpretMessage End\n";
 }

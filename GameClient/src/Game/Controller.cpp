@@ -2,7 +2,7 @@
 
 void Controller::InitControllers()
 {
-    Keyboard_Player_Red_Listner  = std::function<void(const std::vector<glm::vec2>&)>{
+    Keyboard_1_Listner  = std::function<void(const std::vector<glm::vec2>&)>{
         [this](const std::vector<glm::vec2>& c_dir){
             glm::vec2 dir{0.0f, 0.0f};
             int keyboard_controller_check{0};
@@ -32,11 +32,12 @@ void Controller::InitControllers()
                         m_boundary_ptr->SetUserVelocity(dir);
             if (m_keyboard_controller_check != keyboard_controller_check)
             {
-                //send data to server
+                m_keyboard_controller_check = keyboard_controller_check;
+                SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
             }
         }
     };
-    Keyboard_Player_Green_Listner  = std::function<void(const std::vector<glm::vec2>&)>{
+    Keyboard_2_Listner  = std::function<void(const std::vector<glm::vec2>&)>{
         [this](const std::vector<glm::vec2>& c_dir){
             glm::vec2 dir{0.0f, 0.0f};
             int keyboard_controller_check{0};
@@ -66,12 +67,14 @@ void Controller::InitControllers()
                         m_boundary_ptr->SetUserVelocity(dir);
             if (m_keyboard_controller_check != keyboard_controller_check)
             {
-                //send data to server
+
+                m_keyboard_controller_check = keyboard_controller_check;
+                SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
             }
         }
     };
 
-    Mouse_Listner  = std::function<void(const std::vector<glm::vec2>&)>{
+    Mouse_Listner = std::function<void(const std::vector<glm::vec2>&)>{
         [this](const std::vector<glm::vec2>& pos){
             glm::vec2 dir = pos[0] - m_boundary_ptr->Origin();
             if (glm::dot(dir, dir) > 0.00001)
@@ -84,10 +87,27 @@ void Controller::InitControllers()
             }
         }
     };
+
+    Online_Listner = std::function<void(const std::vector<glm::vec2>&)>{
+        [this](const std::vector<glm::vec2>& pos){
+            if(glm::dot(pos[0], pos[0]) < 0.01f)
+                return;
+            m_boundary_ptr->SetPosition(
+                pos[0] +
+                ((float)(pos[2].x + pos[2].y) * pos[1])
+            );
+            m_boundary_ptr->SetVelocity(pos[1]);    
+        }
+    };
+
+    SendData = std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)>{
+        [](const glm::vec2& pos, const glm::vec2& vel, GameEventData::ObjectType& player_type){}
+    };
 }
 
-Controller::Controller(PlayerType player_type, ControllerType controller_type):
-    m_player_type(player_type), m_controller_type(controller_type)
+Controller::Controller(GameEventData::ObjectType player_type, ControllerType controller_type):
+    m_player_type(player_type),
+    m_controller_type(controller_type)
 {
     InitControllers();
     SetControllerType(controller_type);
@@ -99,38 +119,23 @@ Controller::~Controller()
 
 void Controller::SetControllerType()
 {
-    switch (m_player_type)
+    switch (m_controller_type)
     {
-    case PlayerType::Red:
-        switch (m_controller_type)
-        {
-        case ControllerType::Keyboard:
-            ListenInput = Keyboard_Player_Red_Listner;
-            break;
-        case ControllerType::Mouse:
-            ListenInput = Mouse_Listner;
-            break;
-        default:
-            break;
-        };
+    case ControllerType::Keyboard1:
+        ListenInput = Keyboard_1_Listner;
         break;
-    case PlayerType::Green:
-        switch (m_controller_type)
-        {
-        case ControllerType::Keyboard:
-            ListenInput = Keyboard_Player_Green_Listner;
-            break;
-        case ControllerType::Mouse:
-            ListenInput = Mouse_Listner;
-            break;
-        default:
-            break;
-        };
+    case ControllerType::Keyboard2:
+        ListenInput = Keyboard_2_Listner;
+        break;
+    case ControllerType::Mouse:
+        ListenInput = Mouse_Listner;
+        break;
+    case ControllerType::Online:
+        ListenInput = Online_Listner;
         break;
     default:
         break;
-    }
-
+    };
 }
 
 void Controller::AssignBoundary(std::shared_ptr<Boundary> boundary_ptr)

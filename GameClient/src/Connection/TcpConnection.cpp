@@ -74,9 +74,17 @@ void TcpConnection::HandleRecieve(const boost::system::error_code& ec, std::size
     std::istream stream(&m_recv_streambuf);
     stream.read(work_buf.data(), static_cast<std::streamsize>(len));
     work_len = static_cast<int>(len);
-    InterpretMessage();
 
-    StartRecieve();
+    try
+    {
+        InterpretMessage();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    //StartRecieve();
     std::cout << "TcpConnection::HandleRecieve End\n";
 }
 
@@ -100,18 +108,9 @@ void TcpConnection::InterpretMessage()
 
         if (work_buf[2] == contract(Action::Create) && work_buf[3] == contract(Action::Deliminator))
         {
-            size_t next_start{4};
-            int new_session_id = ParseIntegerTillDeliminator(work_buf, next_start, work_len, contract(Action::EndDeliminator));
+            GameSessionData new_game_session_data{work_buf, work_len};
+            m_game_sessions_window.Push(new_game_session_data);
 
-            if (new_session_id != -1)
-            {
-                GameSessionData new_game_session_data{work_buf, work_len};
-                m_game_sessions_window.Push(new_game_session_data);
-            }
-            else
-            {
-                std::cerr << "Malformed Create response (bad/missing session id)\n";
-            }
             return;
         }
 

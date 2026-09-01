@@ -31,4 +31,5 @@ public:
         std::function<void()> on_goalscored
     );
 
+    std::function<void()> SendBallEventsToServer;
 };

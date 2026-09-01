@@ -7,7 +7,6 @@ add_library(connection
     Connection.cpp
     GameEvent.cpp
     GameEvent.hpp
-    GameSession.cpp
     TcpClient.cpp
     UdpClient.cpp
     TcpConnection.cpp

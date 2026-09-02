@@ -204,14 +204,14 @@ inline int ParseConnectionMessageTillDeliminator(
 
 class GameSessionData
 {
-private:
+public:
     size_t m_match_name_len;
     MatchNameBuf m_match_name_buf;
     int match_id{0};
     int player_count{0};
     int red_score{0};
     int green_score{0};
-public:
+
     GameSessionData(const int new_id, const std::array<char, match_name_buf_size>& match_name_buf, size_t match_name_len) :
         match_id(new_id), m_match_name_buf(match_name_buf), m_match_name_len(match_name_len)
     {

@@ -135,7 +135,7 @@ private:
     std::function<const std::vector<glm::vec2>()> PassGreenInputs;
     std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)> SendLocalPlayerDataToServer;
     std::function<void()> SendBallEventsToServer;
-    std::function<bool(float, float)> Compare;
+    std::function<bool(float)> IsBallInOnlineSide;
     void InitializePassInputs();
     void DeterminePassInputs();
 };

@@ -32,4 +32,5 @@ public:
     );
 
     std::function<void()> SendBallEventsToServer;
+    std::function<bool(float)> IsBallInOnlineSide;
 };

@@ -64,6 +64,11 @@ void Match::ProcessOnlinePlayerEvents(GameEventData &e)
 {
     if (m_last_opponent_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
     {
+        if(m_online_player_type == GameEventData::ObjectType::Red)
+            m_game_session_data.green_score = e.m_green_score;
+        else if(m_online_player_type == GameEventData::ObjectType::Green)
+            m_game_session_data.red_score = e.m_red_score;
+
         m_last_opponent_game_event = e;
         online_inputs[0].x = (float)m_last_opponent_game_event.m_player_pos_x / GameEventData::factor;
         online_inputs[0].y = (float)m_last_opponent_game_event.m_player_pos_z / GameEventData::factor;
@@ -74,15 +79,15 @@ void Match::ProcessOnlinePlayerEvents(GameEventData &e)
         online_inputs[2].x = (float)m_last_opponent_game_event.m_lag_ms / GameEventData::factor;
         online_inputs[2].y = (float)m_local_game_event_window.Lag() / GameEventData::factor;
     }
-    
+    DetermineWinner();
 }
 
 void Match::ProcessRecievedBallEvents(GameEventData &e)
 {
     if (m_last_recieved_ball_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
     {
-        glm::vec2 new_pos = glm::vec2(m_last_recieved_ball_game_event.m_player_pos_x, m_last_recieved_ball_game_event.m_player_pos_z)/GameEventData::factor;
-        if (!Compare(new_pos.x, 0.0f))
+        glm::vec2 new_pos = glm::vec2(e.m_player_pos_x, e.m_player_pos_z)/GameEventData::factor;
+        if (!IsBallInOnlineSide(new_pos.y))
         {
             return;
         }
@@ -91,7 +96,7 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
         m_boundary_ball_ptr->SetVelocity(
             glm::vec2(
                 (float)m_last_recieved_ball_game_event.m_player_vel_x / GameEventData::factor,
-                (float)m_last_recieved_ball_game_event.m_player_vel_x / GameEventData::factor
+                (float)m_last_recieved_ball_game_event.m_player_vel_z / GameEventData::factor
             )
         );
 
@@ -100,7 +105,8 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
             (
                 (float)(m_local_game_event_window.Lag() + m_last_recieved_ball_game_event.m_lag_ms)/GameEventData::factor *
                 m_boundary_ball_ptr->Velocity()
-            )
+            ),
+            ball_interpolation_duration_short_ms
         );
     }
 }
@@ -108,7 +114,7 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
 void Match::InitScene()
 {
     m_camera_ptr = std::make_shared<Camera>(
-        65.0f, 65.0f, 90.0f,
+        100.0f, 65.0f, 90.0f,
         m_shared_resolution,
         45.0f,
         0.01f, 1000.0f
@@ -490,6 +496,7 @@ void Match::InitScene()
 void Match::SetUpCollisionEngine()
 {
     m_collision_engine.SendBallEventsToServer = SendBallEventsToServer;
+    m_collision_engine.IsBallInOnlineSide = IsBallInOnlineSide;
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
             m_boundary_red_player_ptr->ClearReflection();
@@ -656,7 +663,7 @@ void Match::OnKeyPressed(GLFWwindow *window_ptr)
 
 void Match::ListenKeysPressed()
 {
-    if (m_match_running)
+    if (!m_ui->m_show_settings)
     {
         m_player_red.ListenInput(PassRedInputs());
         m_player_green.ListenInput(PassGreenInputs());
@@ -820,22 +827,34 @@ void Match::SetupBottomMenu()
 
 void Match::SpawnRedWithServe()
 {
+    if (m_match_type == MatchType::Online)
+    {
+        if(m_local_player_type == GameEventData::ObjectType::Green)
+            return;
+    }
+    
     m_boundary_red_player_ptr->SetVelocity(glm::vec2(0.0f));
     m_boundary_green_player_ptr->SetVelocity(glm::vec2(0.0f));
     m_boundary_ball_ptr->SetVelocity(glm::vec2(0.0f));
     int r = RandomInt(0, 1);
 
-    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[r]);
+    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[r], player_interpolation_duration_long_ms);
     if (r == 0)
     {
-        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[1]);
+        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[1], ball_interpolation_duration_long_ms);
         SpawnGreenWithoutServe(1);
     }
     else
     {
-        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[0]);
+        m_boundary_ball_ptr->SetPosition(m_red_spawn_points[0], ball_interpolation_duration_long_ms);
         SpawnGreenWithoutServe(0);
     }
+    SendLocalPlayerDataToServer(
+        m_boundary_red_player_ptr->Origin(),
+        m_boundary_red_player_ptr->Velocity(),
+        m_local_player_type
+    );
+    SendBallEventsToServer();
 }
 
 void Match::SpawnGreenWithServe()
@@ -845,27 +864,43 @@ void Match::SpawnGreenWithServe()
     m_boundary_ball_ptr->SetVelocity(glm::vec2(0.0f));
     int r = RandomInt(0, 1);
 
-    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[r]);
+    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[r], player_interpolation_duration_long_ms);
     if (r == 0)
     {
-        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[1]);
+        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[1], ball_interpolation_duration_long_ms);
         SpawnRedWithoutServe(1);
     }
     else
     {
-        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[0]);
+        m_boundary_ball_ptr->SetPosition(m_green_spawn_points[0], ball_interpolation_duration_long_ms);
         SpawnRedWithoutServe(0);
     }
+    SendLocalPlayerDataToServer(
+        m_boundary_green_player_ptr->Origin(),
+        m_boundary_green_player_ptr->Velocity(),
+        m_local_player_type
+    );
+    SendBallEventsToServer();
 }
 
 void Match::SpawnRedWithoutServe(int inverse_r)
 {
-    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[inverse_r]);
+    if (m_match_type == MatchType::Online)
+    {
+        if(m_online_player_type == GameEventData::ObjectType::Red)
+            return;
+    }
+    m_boundary_red_player_ptr->SetPosition(m_red_spawn_points[inverse_r], player_interpolation_duration_long_ms);
 }
 
 void Match::SpawnGreenWithoutServe(int inverse_r)
 {
-    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[inverse_r]);
+    if (m_match_type == MatchType::Online)
+    {
+        if(m_online_player_type == GameEventData::ObjectType::Green)
+            return;
+    }
+    m_boundary_green_player_ptr->SetPosition(m_green_spawn_points[inverse_r], player_interpolation_duration_long_ms);
 }
 
 void Match::RedScored()
@@ -884,7 +919,7 @@ void Match::GreenScored()
 
 void Match::DetermineWinner()
 {
-    
+    m_winner_name = "";
     if(m_game_session_data.RedScore() > 2)
         m_winner_name = "Red";
     if(m_game_session_data.GreenScore() > 2)
@@ -904,14 +939,7 @@ void Match::InitMatch()
     m_winner_name = "";
     m_game_session_data.Reset();
 
-    if (RandomInt(0, 1) == 0)
-    {
-        SpawnRedWithServe();
-    }
-    else
-    {
-        SpawnGreenWithServe();
-    }
+    SpawnRedWithServe();
 }
 
 int Match::RandomInt(int min, int max)
@@ -1007,9 +1035,9 @@ void Match::InitializePassInputs()
         }
     };
 
-    Compare = std::function<bool(float, float)>{
-        [](float x, float y){
-            return true;
+    IsBallInOnlineSide = std::function<bool(float)>{
+        [](float y){
+            return false;
         }
     };
 
@@ -1021,7 +1049,11 @@ void Match::InitializePassInputs()
             m_boundary_online_player_ptr = m_boundary_red_player_ptr;
             m_local_player_type = GameEventData::ObjectType::Green;
             m_online_player_type = GameEventData::ObjectType::Red;
-            Compare = std::greater_equal<float>{};
+            IsBallInOnlineSide = std::function<bool(float)>{
+                [](float y){
+                    return y >= 0.0f;
+                }
+            };
         }
         else if (m_player_green.GetControllerType() == Controller::ControllerType::Online)
         {
@@ -1029,7 +1061,11 @@ void Match::InitializePassInputs()
             m_boundary_online_player_ptr = m_boundary_green_player_ptr;
             m_local_player_type = GameEventData::ObjectType::Red;
             m_online_player_type = GameEventData::ObjectType::Green;
-            Compare = std::less_equal<float>{};
+            IsBallInOnlineSide = std::function<bool(float)>{
+                [](float y){
+                    return y <= 0.0f;
+                }
+            };
         }
 
         PassOnlineControls = std::function<const std::vector<glm::vec2>()>{
@@ -1060,7 +1096,7 @@ void Match::InitializePassInputs()
         };
         SendBallEventsToServer = std::function<void()>{
         [this](){
-            if(Compare(m_boundary_ball_ptr->Origin().y, 0.0f))
+            if(IsBallInOnlineSide(m_boundary_ball_ptr->Origin().y))
                 return;
 
             now = std::chrono::steady_clock::now();

@@ -93,8 +93,11 @@ void Controller::InitControllers()
             if(glm::dot(pos[0], pos[0]) < 0.01f)
                 return;
             m_boundary_ptr->SetPosition(
-                pos[0] +
-                ((float)(pos[2].x + pos[2].y) * pos[1])
+                (
+                    pos[0] +
+                    ((float)(pos[2].x + pos[2].y) * pos[1])
+                ),
+                player_interpolation_duration_short_ms
             );
             m_boundary_ptr->SetVelocity(pos[1]);    
         }

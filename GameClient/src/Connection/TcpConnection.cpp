@@ -84,7 +84,7 @@ void TcpConnection::HandleRecieve(const boost::system::error_code& ec, std::size
         std::cerr << e.what() << '\n';
     }
 
-    //StartRecieve();
+    StartRecieve();
     std::cout << "TcpConnection::HandleRecieve End\n";
 }
 

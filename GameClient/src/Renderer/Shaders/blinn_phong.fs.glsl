@@ -250,7 +250,7 @@ void main()
 
 
     float cosTheta2 = max(dot(N, V), 0.0);
-    float F0 = 0.09;
+    float F0 = 0.2;
     float fresnel = F0 + (1.0 - F0) * pow(1.0 - cosTheta2, 5.0);
 
     FragColor.rgb = mix(FragColor.rgb, reflected_color.rgb, fresnel);

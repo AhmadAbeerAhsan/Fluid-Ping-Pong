@@ -32,6 +32,9 @@ void CollisionEngine::ResolvePlayerCircleToCicleCollision(std::shared_ptr<Bounda
     if (!c1_ptr->CollideAgainstCircle(c2_ptr))
         return;
 
+    if (IsBallInOnlineSide(c2_ptr->Origin().y))
+        return;
+
     m_ui_ptr->PlayBounce(c2_ptr->Origin());
     glm::vec2 delta_d{c2_ptr->Origin() - c1_ptr->Origin()};
     glm::vec2 n = glm::normalize(
@@ -127,7 +130,8 @@ void CollisionEngine::ResolvePlayerCicleXCollision(std::shared_ptr<Boundary> &c1
         other_circle->SetPosition(
             glm::vec2(
                 max - other_circle->Radius(), other_circle->Origin().y
-            )
+            ),
+            player_interpolation_duration_short_ms
         );
         other_circle->Reflect(glm::vec2(-1.0f, 0.0f));
     }
@@ -137,7 +141,8 @@ void CollisionEngine::ResolvePlayerCicleXCollision(std::shared_ptr<Boundary> &c1
         other_circle->SetPosition(
             glm::vec2(
                 min + other_circle->Radius(), other_circle->Origin().y
-            )
+            ),
+            player_interpolation_duration_short_ms
         );
         other_circle->Reflect( glm::vec2(1.0f, 0.0f));
     }
@@ -158,7 +163,8 @@ void CollisionEngine::ResolvePlayerCicleZCollision(std::shared_ptr<Boundary> &c1
             glm::vec2(
                 other_circle->Origin().x,
                 max - other_circle->Radius()
-            )
+            ),
+            player_interpolation_duration_short_ms
         );
         other_circle->Reflect(glm::vec2(0.0f, -1.0f));
     }
@@ -169,7 +175,8 @@ void CollisionEngine::ResolvePlayerCicleZCollision(std::shared_ptr<Boundary> &c1
             glm::vec2(
                 other_circle->Origin().x,
                 min + other_circle->Radius()
-            )
+            ),
+            ball_interpolation_duration_short_ms
         );
         other_circle->Reflect(glm::vec2(0.0f, 1.0f));
     }
@@ -182,6 +189,9 @@ void CollisionEngine::ResolveGoalLineToCicleCollision(
     )
 {
     if (!l1_ptr->CollideAgainstCircle(c2_ptr))
+        return;
+    
+    if (IsBallInOnlineSide(c2_ptr->Origin().y))
         return;
 
     m_ui_ptr->PlayGoalSound();

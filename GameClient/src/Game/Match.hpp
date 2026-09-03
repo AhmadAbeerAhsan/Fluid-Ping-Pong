@@ -121,7 +121,7 @@ private:
 
     void RedScored();
     void GreenScored();
-    void DetermineWinner();
+    bool DetermineWinner();
 
     void InitMatch();
 
@@ -136,6 +136,7 @@ private:
     std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)> SendLocalPlayerDataToServer;
     std::function<void()> SendBallEventsToServer;
     std::function<bool(float)> IsBallInOnlineSide;
+    std::function<void()> SendLeaveReq;
     void InitializePassInputs();
     void DeterminePassInputs();
 };

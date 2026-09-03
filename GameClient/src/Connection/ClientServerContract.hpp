@@ -205,10 +205,17 @@ inline int ParseConnectionMessageTillDeliminator(
 class GameSessionData
 {
 public:
+    enum ConnectionStatus : int
+    {
+        Disconnected = 0,
+        Connected = 1
+    };
+
     size_t m_match_name_len;
     MatchNameBuf m_match_name_buf;
     int match_id{0};
-    int player_count{0};
+    int red_connection_status{ConnectionStatus::Disconnected};
+    int green_connection_status{ConnectionStatus::Disconnected};
     int red_score{0};
     int green_score{0};
 
@@ -222,9 +229,14 @@ public:
     }
     GameSessionData(){}
 
-    void IncreamentPlayerCount(){player_count++;}
-    void DecreamentPlayerCount(){player_count--;}
-    int PlayerCount(){return player_count;}
+    int PlayerCount(){
+        int count{0};
+        if(red_connection_status == ConnectionStatus::Connected)
+            count++;
+        if(green_connection_status == ConnectionStatus::Connected)
+            count++;
+        return count;
+    }
     const char* MatchName(){ return m_match_name_buf.data(); }
     int MatchId(){ return match_id; }
     int RedScore(){ return red_score; }
@@ -236,12 +248,13 @@ public:
     std::string EncodeBuffer() const
     {
         return std::format(
-            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             contract(Action::Success),      contract(Action::Deliminator),
             contract(Action::ListSessions), contract(Action::Deliminator),
             match_id,                       contract(Action::Deliminator),
             m_match_name_buf.data(),        contract(Action::Deliminator),
-            player_count,                   contract(Action::Deliminator),
+            red_connection_status,          contract(Action::Deliminator),
+            green_connection_status,        contract(Action::Deliminator),
             red_score,                      contract(Action::Deliminator),
             green_score,                    contract(Action::EndDeliminator)
         );
@@ -251,7 +264,8 @@ public:
         size_t next_start{4};
         match_id = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         m_match_name_len = ParseMatchNameTillDeliminator(buf, next_start, buf_len, m_match_name_buf, contract(Action::Deliminator));
-        player_count = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        red_connection_status = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        green_connection_status = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         red_score = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         green_score = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::EndDeliminator));
     }

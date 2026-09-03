@@ -25,8 +25,10 @@ Match::Match(
     start = std::chrono::steady_clock::now();
 }
 
+
 Match::~Match()
 {
+    SendLeaveReq();
     std::cout << "Match::~Match()" << std::endl;
 }
 
@@ -35,9 +37,6 @@ void Match::ReadOnlineEvents()
     GameEventData new_event_data;
     while (m_con->game_events.Read(new_event_data))
     {
-        std::cout << std::format(
-            "{} {}\n", "Read From Window:", new_event_data.EncodeBuffer()
-        );
         if (new_event_data.m_player_type == m_local_player_type)
         {
             ProcessLocalPlayerEvents(new_event_data);
@@ -55,6 +54,9 @@ void Match::ReadOnlineEvents()
 
 void Match::ProcessLocalPlayerEvents(GameEventData &e)
 {
+    std::cout << std::format(
+        "{} {}\n", "Read Local Player Window:", e.EncodeBuffer()
+    );
     now = std::chrono::steady_clock::now();
     int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
     m_local_game_event_window.UpdateLag(e, time_elapsed);
@@ -62,12 +64,14 @@ void Match::ProcessLocalPlayerEvents(GameEventData &e)
 
 void Match::ProcessOnlinePlayerEvents(GameEventData &e)
 {
+    std::cout << std::format(
+        "{} {}\n", "Read Online Player Window:", e.EncodeBuffer()
+    );
     if (m_last_opponent_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
     {
-        if(m_online_player_type == GameEventData::ObjectType::Red)
-            m_game_session_data.green_score = e.m_green_score;
-        else if(m_online_player_type == GameEventData::ObjectType::Green)
-            m_game_session_data.red_score = e.m_red_score;
+  
+        m_game_session_data.green_score = e.m_green_score;
+        m_game_session_data.red_score = e.m_red_score;
 
         m_last_opponent_game_event = e;
         online_inputs[0].x = (float)m_last_opponent_game_event.m_player_pos_x / GameEventData::factor;
@@ -84,15 +88,25 @@ void Match::ProcessOnlinePlayerEvents(GameEventData &e)
 
 void Match::ProcessRecievedBallEvents(GameEventData &e)
 {
+    std::cout << std::format(
+        "{} {}\n", "Read Online Ball Window:", e.EncodeBuffer()
+    );
     if (m_last_recieved_ball_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
     {
         glm::vec2 new_pos = glm::vec2(e.m_player_pos_x, e.m_player_pos_z)/GameEventData::factor;
+        if(glm::dot(new_pos, new_pos) > 0.01f && !DetermineWinner())
+            m_match_running = true;
+
         if (!IsBallInOnlineSide(new_pos.y))
         {
+            std::cout << std::format(
+                "{} Recieved: {}, Old: {}\n", "Ball is in local Pos:", e.EncodeBuffer(), m_last_recieved_ball_game_event.EncodeBuffer()
+            );
             return;
         }
-        
+
         m_last_recieved_ball_game_event = e;
+        
         m_boundary_ball_ptr->SetVelocity(
             glm::vec2(
                 (float)m_last_recieved_ball_game_event.m_player_vel_x / GameEventData::factor,
@@ -107,6 +121,12 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
                 m_boundary_ball_ptr->Velocity()
             ),
             ball_interpolation_duration_short_ms
+        );
+    }
+    else
+    {
+        std::cout << std::format(
+            "{} Recieved: {}, Old: {}\n", "Ball Outdated:", e.EncodeBuffer(), m_last_recieved_ball_game_event.EncodeBuffer()
         );
     }
 }
@@ -827,12 +847,6 @@ void Match::SetupBottomMenu()
 
 void Match::SpawnRedWithServe()
 {
-    if (m_match_type == MatchType::Online)
-    {
-        if(m_local_player_type == GameEventData::ObjectType::Green)
-            return;
-    }
-    
     m_boundary_red_player_ptr->SetVelocity(glm::vec2(0.0f));
     m_boundary_green_player_ptr->SetVelocity(glm::vec2(0.0f));
     m_boundary_ball_ptr->SetVelocity(glm::vec2(0.0f));
@@ -917,20 +931,26 @@ void Match::GreenScored()
     DetermineWinner();
 }
 
-void Match::DetermineWinner()
+bool Match::DetermineWinner()
 {
-    m_winner_name = "";
-    if(m_game_session_data.RedScore() > 2)
-        m_winner_name = "Red";
-    if(m_game_session_data.GreenScore() > 2)
-        m_winner_name = "Green";   
-    std::cout << "Match::DetermineWinner(): " << m_winner_name << std::endl;
-    m_match_running = m_winner_name.empty();
-    if (!m_match_running)
+    std::cout << std::format(
+        "{} Red: {}, Green: {}\n", "Match::DetermineWinner():", m_game_session_data.red_score, m_game_session_data.green_score
+    );
+    if(m_game_session_data.red_score > 2)
     {
+        m_winner_name = "Red";
         m_ui->PlayWinSound();
+        m_match_running = false;
+        return true;
     }
-    
+    if(m_game_session_data.green_score > 2)
+    {
+        m_winner_name = "Green";
+        m_ui->PlayWinSound();
+        m_match_running = false;
+        return true;
+    }
+    return false;
 }
 
 void Match::InitMatch()
@@ -939,7 +959,18 @@ void Match::InitMatch()
     m_winner_name = "";
     m_game_session_data.Reset();
 
-    SpawnRedWithServe();
+    if (m_match_type == MatchType::Offline)
+    {
+        SpawnRedWithServe();
+        return;
+    }
+    
+
+    if(m_local_player_type == GameEventData::ObjectType::Red)
+        SpawnRedWithServe();
+    if (m_local_player_type == GameEventData::ObjectType::Green)
+        SpawnGreenWithServe();
+    
 }
 
 int Match::RandomInt(int min, int max)
@@ -1034,6 +1065,10 @@ void Match::InitializePassInputs()
         [](){
         }
     };
+    SendLeaveReq = std::function<void()>{
+        [](){
+        }
+    };
 
     IsBallInOnlineSide = std::function<bool(float)>{
         [](float y){
@@ -1092,30 +1127,49 @@ void Match::InitializePassInputs()
                 std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
                 m_con->udpC.StartSend(req);
                 m_local_game_event_window.Push(g);
+                std::cout << std::format(
+                    "{} {}\n", "Local Player Event Out:", g.EncodeBuffer()
+                );
             }
         };
         SendBallEventsToServer = std::function<void()>{
-        [this](){
-            if(IsBallInOnlineSide(m_boundary_ball_ptr->Origin().y))
-                return;
+            [this](){
+                if(IsBallInOnlineSide(m_boundary_ball_ptr->Origin().y))
+                    return;
 
-            now = std::chrono::steady_clock::now();
-            int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            GameEventData g{
-                m_game_session_data.MatchId(),
-                static_cast<int>(GameEventData::ObjectType::Ball),
-                m_game_session_data.RedScore(),
-                m_game_session_data.GreenScore(),
-                static_cast<int>(m_boundary_ball_ptr->Origin().x * GameEventData::factor),
-                static_cast<int>(m_boundary_ball_ptr->Origin().y * GameEventData::factor),
-                static_cast<int>(m_boundary_ball_ptr->Velocity().x * GameEventData::factor),
-                static_cast<int>(m_boundary_ball_ptr->Velocity().y * GameEventData::factor),
-                time_elapsed,
-                m_local_game_event_window.Lag()
-            };
-            std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
-            m_con->udpC.StartSend(req);
-            m_local_game_event_window.Push(g);
+                now = std::chrono::steady_clock::now();
+                int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                GameEventData g{
+                    m_game_session_data.MatchId(),
+                    static_cast<int>(GameEventData::ObjectType::Ball),
+                    m_game_session_data.RedScore(),
+                    m_game_session_data.GreenScore(),
+                    static_cast<int>(m_boundary_ball_ptr->Origin().x * GameEventData::factor),
+                    static_cast<int>(m_boundary_ball_ptr->Origin().y * GameEventData::factor),
+                    static_cast<int>(m_boundary_ball_ptr->Velocity().x * GameEventData::factor),
+                    static_cast<int>(m_boundary_ball_ptr->Velocity().y * GameEventData::factor),
+                    time_elapsed,
+                    m_local_game_event_window.Lag()
+                };
+                std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
+                m_con->udpC.StartSend(req);
+                std::cout << std::format(
+                    "{} {}\n", "Ball Event Out:", g.EncodeBuffer()
+                );
+            }
+        };
+
+        SendLeaveReq = std::function<void()>{
+            [this](){
+                std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+                    std::format(
+                        "{}{}{}{}{}{}",
+                        contract(Action::Leave),                contract(Action::Deliminator),
+                        static_cast<int>(m_local_player_type),  contract(Action::Deliminator),
+                        m_game_session_data.match_id,           contract(Action::EndDeliminator)
+                    )
+                )};
+                m_con->udpC.StartSend(connect_message);
             }
         };
     }

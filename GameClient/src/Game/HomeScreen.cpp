@@ -12,15 +12,16 @@ void HomeScreen::RefreshOnlineGameSessionList()
     m_con->tcpC.Send(connect_message, true);
 }
 
-void HomeScreen::SendJoinReq(int match_id)
+void HomeScreen::SendJoinReq(int match_id, int player_type)
 {
     std::cout << std::format(
         "MatchId: {}, JoiningId:{}\n", match_id, joining_session.MatchId()
     );
     std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
         std::format(
-            "{}{}{}{}",
+            "{}{}{}{}{}{}",
             contract(Action::Join), contract(Action::Deliminator),
+            player_type,            contract(Action::Deliminator),
             match_id,               contract(Action::EndDeliminator)
         )
     )};
@@ -189,9 +190,11 @@ void HomeScreen::DrawOnlineMatchMakingMenu()
     {
         ImGui::PushID(static_cast<int>(i));
         UIWidgets::OnlineMatch(
-            game_sessions[i].MatchName(),
-            std::to_string(game_sessions[i].PlayerCount()).data(),
-            [this, i](){ joining_session = game_sessions[i]; SendJoinReq( game_sessions[i].MatchId()); },
+            game_sessions[i],
+            [this, match_id = game_sessions[i].MatchId()](int player_type){
+                joining_session.match_id = match_id;
+                SendJoinReq(match_id, player_type);
+            },
             1.5f
         );
         ImGui::Spacing();
@@ -256,13 +259,13 @@ void HomeScreen::ListenKeysPressed()
         {
             if (new_game_event_data.m_player_type == GameEventData::ObjectType::Red)
             {
-                c1 = Controller::ControllerType::Online; c2 = Controller::ControllerType::Keyboard1;
+                c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Online;
                 m_match_type = Match::MatchType::Online;
                 m_ui->m_match_requested = true;
             }
             else if (new_game_event_data.m_player_type == GameEventData::ObjectType::Green)
             {
-                c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Online;
+                c1 = Controller::ControllerType::Online; c2 = Controller::ControllerType::Keyboard1;
                 m_match_type = Match::MatchType::Online;
                 m_ui->m_match_requested = true;
             } 

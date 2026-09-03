@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <iostream>
 #include <functional>
+#include "../Connection/ClientServerContract.hpp"
 
 struct UIStyle
 {
@@ -39,5 +40,5 @@ public:
     static bool Slider(const char* label, float* value, float min, float max, float font_size, float width = 0.0f, HorizontalLayout hl = HorizontalLayout::Left);
     static bool InputField(const char* label, char* buffer, size_t bufferSize, float font_size, HorizontalLayout hl = HorizontalLayout::Left);
     static bool Checkbox(const char* label, bool* value, float font_size, HorizontalLayout hl = HorizontalLayout::Left);
-    static void OnlineMatch(const char* match_name, const char* player_count, std::function<void()> fun, float font_size);
+    static void OnlineMatch(GameSessionData& session, std::function<void(int)> fun, float font_size);
 };

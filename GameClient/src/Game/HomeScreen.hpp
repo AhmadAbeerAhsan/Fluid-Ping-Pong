@@ -23,7 +23,7 @@ private:
     GameSessionData joining_session{};
     std::vector<GameSessionData> game_sessions{};
     void RefreshOnlineGameSessionList();
-    void SendJoinReq(int match_id);
+    void SendJoinReq(int match_id, int player_type);
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

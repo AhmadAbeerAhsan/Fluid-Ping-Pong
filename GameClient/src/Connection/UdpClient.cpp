@@ -91,7 +91,7 @@ void UdpClient::HandleRecieve(const boost::system::error_code& ec, std::size_t l
 void UdpClient::InterpretMessage()
 {
     std::cout << std::format(
-        "{} {} {}\n","TcpConnection::InterpretMessage Begin:", "Message:", recv_buf.data()
+        "{} {} {}\n","UdpClient::InterpretMessage Begin:", "Message:", recv_buf.data()
     );
     if (recv_len < 4)
     {
@@ -100,7 +100,6 @@ void UdpClient::InterpretMessage()
 
     if (recv_buf[0] == contract(Action::MatchEvent) && recv_buf[1] == contract(Action::Deliminator))
     {
-        std::cout << "UdpClient::InterpretMessage MatchEvent\n";
         GameEventData g{recv_buf, recv_len};
         m_game_events.Push(g);
         return;

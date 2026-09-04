@@ -23,12 +23,13 @@ Match::Match(
     InitializePassInputs();
     SetUpCollisionEngine();
     start = std::chrono::steady_clock::now();
+    m_last_online_event_recieved_time = std::chrono::steady_clock::now();
 }
 
 
 Match::~Match()
 {
-    SendLeaveReq();
+    Clean();
     std::cout << "Match::~Match()" << std::endl;
 }
 
@@ -37,6 +38,7 @@ void Match::ReadOnlineEvents()
     GameEventData new_event_data;
     while (m_con->game_events.Read(new_event_data))
     {
+        m_last_online_event_recieved_time = std::chrono::steady_clock::now();
         if (new_event_data.m_player_type == m_local_player_type)
         {
             ProcessLocalPlayerEvents(new_event_data);
@@ -67,11 +69,9 @@ void Match::ProcessOnlinePlayerEvents(GameEventData &e)
     std::cout << std::format(
         "{} {}\n", "Read Online Player Window:", e.EncodeBuffer()
     );
-    if (m_last_opponent_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
+    if (IsIncomingEventNewer( m_last_opponent_game_event, e ))
     {
-  
-        m_game_session_data.green_score = e.m_green_score;
-        m_game_session_data.red_score = e.m_red_score;
+        UpdateScoreOnline(e);
 
         m_last_opponent_game_event = e;
         online_inputs[0].x = (float)m_last_opponent_game_event.m_player_pos_x / GameEventData::factor;
@@ -91,7 +91,7 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
     std::cout << std::format(
         "{} {}\n", "Read Online Ball Window:", e.EncodeBuffer()
     );
-    if (m_last_recieved_ball_game_event.m_time_stamp_now_ms < e.m_time_stamp_now_ms)
+    if (IsIncomingEventNewer( m_last_recieved_ball_game_event, e ))
     {
         glm::vec2 new_pos = glm::vec2(e.m_player_pos_x, e.m_player_pos_z)/GameEventData::factor;
         if(glm::dot(new_pos, new_pos) > 0.01f && !DetermineWinner())
@@ -612,6 +612,26 @@ void Match::SetUpCollisionEngine()
     );
 }
 
+bool Match::IsIncomingEventNewer(const GameEventData &old_e, const GameEventData &new_e)
+{
+    return (new_e.m_time_stamp_now_ms > old_e.m_time_stamp_now_ms) || (new_e.m_join_level > old_e.m_join_level);
+}
+
+void Match::UpdateScoreOnline(const GameEventData &e)
+{
+    if (m_game_session_data.green_score != e.m_green_score)
+    {
+        m_ui->PlayGoalSound();
+    }
+    if (m_game_session_data.red_score != e.m_red_score)
+    {
+        m_ui->PlayGoalSound();
+    }
+    
+    m_game_session_data.green_score = e.m_green_score;
+    m_game_session_data.red_score = e.m_red_score;
+}
+
 void Match::DrawScene()
 {
     glStencilMask(0xFF);
@@ -691,6 +711,7 @@ void Match::ListenKeysPressed()
     online_inputs[0].x = 0.0f;
     online_inputs[0].y = 0.0f;
     ReadOnlineEvents();
+    CheckAndSendLastEventsToServer();
 }
 
 void Match::ProcessPendingNavigation()
@@ -700,6 +721,11 @@ void Match::ProcessPendingNavigation()
         m_ui->m_home_requested = false;
         m_ui->Navigate_To_HomeScreen();
     }
+}
+
+void Match::Clean()
+{
+    SendLeaveReq();
 }
 
 void Match::SetupUI()
@@ -1069,10 +1095,13 @@ void Match::InitializePassInputs()
         [](){
         }
     };
-
     IsBallInOnlineSide = std::function<bool(float)>{
         [](float y){
             return false;
+        }
+    };
+    CheckAndSendLastEventsToServer = std::function<void()>{
+        [](){
         }
     };
 
@@ -1127,6 +1156,9 @@ void Match::InitializePassInputs()
                 std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
                 m_con->udpC.StartSend(req);
                 m_local_game_event_window.Push(g);
+                m_last_sent_local_player_event = g;
+                m_is_first_local_player_event_sent = true;
+                m_player_time_elapsed_till_last_send = time_elapsed;
                 std::cout << std::format(
                     "{} {}\n", "Local Player Event Out:", g.EncodeBuffer()
                 );
@@ -1153,6 +1185,9 @@ void Match::InitializePassInputs()
                 };
                 std::shared_ptr<std::string> req{std::make_shared<std::string>(g.EncodeBuffer())};
                 m_con->udpC.StartSend(req);
+                m_last_sent_local_ball_event = g;
+                m_is_first_local_ball_event_sent = true;
+                m_ball_time_elapsed_till_last_send = time_elapsed;
                 std::cout << std::format(
                     "{} {}\n", "Ball Event Out:", g.EncodeBuffer()
                 );
@@ -1161,7 +1196,7 @@ void Match::InitializePassInputs()
 
         SendLeaveReq = std::function<void()>{
             [this](){
-                std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
+                std::shared_ptr<std::string> leave_message{std::make_shared<std::string>(
                     std::format(
                         "{}{}{}{}{}{}",
                         contract(Action::Leave),                contract(Action::Deliminator),
@@ -1169,7 +1204,32 @@ void Match::InitializePassInputs()
                         m_game_session_data.match_id,           contract(Action::EndDeliminator)
                     )
                 )};
-                m_con->udpC.StartSend(connect_message);
+                m_con->udpC.StartSend(leave_message);
+            }
+        };
+
+        CheckAndSendLastEventsToServer = std::function<void()>{
+            [this](){
+                now = std::chrono::steady_clock::now();
+                int time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+
+                if(time_elapsed - m_player_time_elapsed_till_last_send > 300 && m_is_first_local_player_event_sent)
+                {
+                    std::shared_ptr<std::string> req{std::make_shared<std::string>(m_last_sent_local_player_event.EncodeBuffer())};
+                    m_con->udpC.StartSend(req);
+                    m_player_time_elapsed_till_last_send = time_elapsed;
+                }
+                
+                if(time_elapsed - m_ball_time_elapsed_till_last_send > 300 && m_is_first_local_ball_event_sent)
+                {
+                    std::shared_ptr<std::string> req{std::make_shared<std::string>(m_last_sent_local_ball_event.EncodeBuffer())};
+                    m_con->udpC.StartSend(req);
+                    m_ball_time_elapsed_till_last_send = time_elapsed;
+                }
+
+                int time_elapsed_till_last_recieved = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_last_online_event_recieved_time).count();
+                if(time_elapsed_till_last_recieved > 5000)
+                    m_ui->Navigate_To_HomeScreen();
             }
         };
     }

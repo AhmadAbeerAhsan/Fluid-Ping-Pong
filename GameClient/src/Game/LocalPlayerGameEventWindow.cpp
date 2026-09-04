@@ -16,7 +16,7 @@ void LocalPlayerGameEventWindow::Push(GameEventData &e)
 
 void LocalPlayerGameEventWindow::UpdateLag(GameEventData &e, int time_count_now)
 {
-    if (e.m_time_stamp_now_ms < m_latest_observered_timestamp_ms)
+    if (e.m_time_stamp_now_ms <= m_latest_observered_timestamp_ms)
     {
         return;
     }

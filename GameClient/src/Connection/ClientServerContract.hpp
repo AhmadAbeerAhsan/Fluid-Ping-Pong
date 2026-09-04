@@ -289,6 +289,7 @@ public:
     int m_player_pos_z{0};
     int m_player_vel_x{0};
     int m_player_vel_z{0};
+    int m_join_level{0};    // number of join reqs
     int m_time_stamp_now_ms{0};
     int m_lag_ms{0};
 
@@ -327,7 +328,7 @@ public:
     std::string EncodeBuffer() const
     {
         return std::format(
-            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             contract(Action::MatchEvent),contract(Action::Deliminator),
             m_match_id,                  contract(Action::Deliminator),
             m_player_type,               contract(Action::Deliminator),
@@ -337,6 +338,7 @@ public:
             m_player_pos_z,              contract(Action::Deliminator),
             m_player_vel_x,              contract(Action::Deliminator),
             m_player_vel_z,              contract(Action::Deliminator),
+            m_join_level,                contract(Action::Deliminator),
             m_time_stamp_now_ms,         contract(Action::Deliminator),
             m_lag_ms,                    contract(Action::EndDeliminator)
         );
@@ -353,6 +355,7 @@ public:
         m_player_pos_z   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         m_player_vel_x   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         m_player_vel_z   = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
+        m_join_level     = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         m_time_stamp_now_ms = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::Deliminator));
         m_lag_ms         = ParseIntegerTillDeliminator(buf, next_start, buf_len, contract(Action::EndDeliminator));
     }

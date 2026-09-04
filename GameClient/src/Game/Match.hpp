@@ -60,7 +60,10 @@ private:
     GameEventData m_last_recieved_ball_game_event{};
     std::vector<glm::vec2> online_inputs{3, glm::vec2(0.0f, 0.0f)};
     std::chrono::steady_clock::time_point start;
+    std::chrono::steady_clock::time_point m_last_online_event_recieved_time;
     std::chrono::steady_clock::time_point now;
+    int m_player_time_elapsed_till_last_send{0};
+    int m_ball_time_elapsed_till_last_send{0};
     LocalPlayerGameEventWindow m_local_game_event_window{};
     void ReadOnlineEvents();
     void ProcessLocalPlayerEvents(GameEventData& e);
@@ -78,6 +81,9 @@ private:
 
     void InitScene();
     void SetUpCollisionEngine();
+
+    bool IsIncomingEventNewer(const GameEventData& old_e, const GameEventData& new_e);
+    void UpdateScoreOnline(const GameEventData& e);
 
 public:
     Match(
@@ -97,6 +103,7 @@ public:
     void OnKeyPressed(GLFWwindow* window_ptr) override;
     void ListenKeysPressed() override;
     void ProcessPendingNavigation() override;
+    void Clean() override;
 
     void SetupUI() override;
     void SetupScoreBar();
@@ -137,6 +144,12 @@ private:
     std::function<void()> SendBallEventsToServer;
     std::function<bool(float)> IsBallInOnlineSide;
     std::function<void()> SendLeaveReq;
+
+    bool m_is_first_local_player_event_sent{false};
+    bool m_is_first_local_ball_event_sent{false};
+    GameEventData m_last_sent_local_player_event{};
+    GameEventData m_last_sent_local_ball_event{};
+    std::function<void()> CheckAndSendLastEventsToServer;
     void InitializePassInputs();
     void DeterminePassInputs();
 };

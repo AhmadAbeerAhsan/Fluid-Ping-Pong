@@ -38,4 +38,5 @@ public:
     virtual void OnKeyPressed(GLFWwindow* window_ptr) = 0;
     virtual void ListenKeysPressed() = 0;
     virtual void ProcessPendingNavigation() = 0;
+    virtual void Clean() = 0;
 };

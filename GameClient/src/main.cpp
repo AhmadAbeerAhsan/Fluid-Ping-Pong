@@ -143,6 +143,10 @@ int main()
         std::cout << e.what() << '\n';
         std::cout << "Exception caught" << std::endl; 
     }
+
+    screen->Clean();
+    // Sleep for 500 milliseconds
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
     boost::system::error_code ec;
     con->udpC.Close();

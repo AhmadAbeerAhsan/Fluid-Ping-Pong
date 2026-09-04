@@ -42,4 +42,5 @@ public:
     void OnKeyPressed(GLFWwindow* window_ptr) override;
     void ListenKeysPressed() override;
     void ProcessPendingNavigation() override;
+    void Clean() override;
 };

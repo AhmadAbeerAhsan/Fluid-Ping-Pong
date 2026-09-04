@@ -290,3 +290,7 @@ void HomeScreen::ProcessPendingNavigation()
         m_ui->Navigate_To_Match(c1, c2, m_match_type, joining_session);
     }
 }
+
+void HomeScreen::Clean()
+{
+}

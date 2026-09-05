@@ -62,8 +62,11 @@ void Boundary::Update()
 
 void Boundary::SetPosition(glm::vec2 pos, int new_threshold_ms)
 {
-    m_boundary_positions.x = pos.x;
-    m_boundary_positions.y = pos.y;
+    //m_model->m_model_positions.x = m_boundary_positions.x;
+    //m_model->m_model_positions.z = m_boundary_positions.y;
+
+    m_boundary_positions = pos;
+
     start = std::chrono::steady_clock::now();
     m_threshold_ms = new_threshold_ms;
 }

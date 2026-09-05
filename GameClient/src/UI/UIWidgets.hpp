@@ -42,3 +42,9 @@ public:
     static bool Checkbox(const char* label, bool* value, float font_size, HorizontalLayout hl = HorizontalLayout::Left);
     static void OnlineMatch(GameSessionData& session, std::function<void(int)> fun, float font_size);
 };
+
+struct ScopedFontScale
+{
+    explicit ScopedFontScale(float scale) { ImGui::SetWindowFontScale(scale); }
+    ~ScopedFontScale() { ImGui::SetWindowFontScale(1.0f); }
+};

@@ -57,7 +57,8 @@ public:
     bool m_home_requested{false};
     bool m_match_requested{false};
     void DrawScoreHUD(const std::string& leftName, int leftScore,
-                       const std::string& rightName, int rightScore);
+                       const std::string& rightName, int rightScore,
+                       int red_ping_ms, int green_ping_ms, bool is_online);
 
     bool m_show_audio_settings{true};
     bool m_show_settings{false};

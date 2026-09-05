@@ -129,7 +129,7 @@ void CollisionEngine::ResolvePlayerCicleXCollision(std::shared_ptr<Boundary> &c1
     {
         other_circle->SetPosition(
             glm::vec2(
-                max - other_circle->Radius(), other_circle->Origin().y
+                max - other_circle->Radius() - 0.1f, other_circle->Origin().y
             ),
             player_interpolation_duration_short_ms
         );
@@ -140,7 +140,7 @@ void CollisionEngine::ResolvePlayerCicleXCollision(std::shared_ptr<Boundary> &c1
     {
         other_circle->SetPosition(
             glm::vec2(
-                min + other_circle->Radius(), other_circle->Origin().y
+                min + other_circle->Radius() + 0.1f, other_circle->Origin().y
             ),
             player_interpolation_duration_short_ms
         );
@@ -162,7 +162,7 @@ void CollisionEngine::ResolvePlayerCicleZCollision(std::shared_ptr<Boundary> &c1
         other_circle->SetPosition(
             glm::vec2(
                 other_circle->Origin().x,
-                max - other_circle->Radius()
+                max - other_circle->Radius() - 0.1f
             ),
             player_interpolation_duration_short_ms
         );
@@ -174,7 +174,7 @@ void CollisionEngine::ResolvePlayerCicleZCollision(std::shared_ptr<Boundary> &c1
         other_circle->SetPosition(
             glm::vec2(
                 other_circle->Origin().x,
-                min + other_circle->Radius()
+                min + other_circle->Radius() + 0.1f
             ),
             ball_interpolation_duration_short_ms
         );

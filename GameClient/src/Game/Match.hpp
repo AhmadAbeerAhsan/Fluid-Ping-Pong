@@ -134,7 +134,14 @@ private:
 
     int RandomInt(int min, int max);
 
+    glm::vec2 min_mouse_pos{};
+    glm::vec2 max_mouse_pos{};
+    glm::vec2 red_min_mouse_pos{};
+    glm::vec2 red_max_mouse_pos{};
+    glm::vec2 green_min_mouse_pos{};
+    glm::vec2 green_max_mouse_pos{};
     std::function<const std::vector<glm::vec2>()> PassMouseXZPos;
+
     std::function<const std::vector<glm::vec2>()> PassCameraControls;
     std::function<const std::vector<glm::vec2>()> PassOnlineControls;
     void GiveMouseControls(GameEventData::ObjectType player_type);

@@ -1,14 +1,5 @@
 #include "UIWidgets.hpp"
 
-namespace
-{
-    struct ScopedFontScale
-    {
-        explicit ScopedFontScale(float scale) { ImGui::SetWindowFontScale(scale); }
-        ~ScopedFontScale() { ImGui::SetWindowFontScale(1.0f); }
-    };
-}
-
 bool UIWidgets::Button(const char* label, float font_size, HorizontalLayout hl)
 {
     ScopedFontScale fontScale(font_size);

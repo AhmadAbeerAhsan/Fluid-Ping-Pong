@@ -27,6 +27,10 @@ private:
     std::shared_ptr<Boundary> m_boundary_ptr;
 
     int m_keyboard_controller_check{0};
+
+    glm::vec2 m_mouse_old_vel_check{0.0f, 0.0f};
+    glm::vec2 m_mouse_old_vel_dir_check{1.0f, 0.0f};
+    bool m_resting_event_sent{true};
     void InitControllers();
 
     std::function<void(const std::vector<glm::vec2>&)> Keyboard_1_Listner;

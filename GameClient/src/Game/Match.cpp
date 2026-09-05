@@ -145,12 +145,12 @@ void Match::InitScene()
     Texture floor_texture{"GameClient/assets/textures/base.png"};
     Texture ball_texture{"GameClient/assets/textures/ball.png"};
     std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/cube_maps/px.png",
-        "GameClient/assets/textures/cube_maps/nx.png",
-        "GameClient/assets/textures/cube_maps/py.png",
-        "GameClient/assets/textures/cube_maps/ny.png",
-        "GameClient/assets/textures/cube_maps/pz.png",
-        "GameClient/assets/textures/cube_maps/nz.png"
+        "GameClient/assets/textures/space_cube2/px.png",
+        "GameClient/assets/textures/space_cube2/nx.png",
+        "GameClient/assets/textures/space_cube2/py.png",
+        "GameClient/assets/textures/space_cube2/ny.png",
+        "GameClient/assets/textures/space_cube2/pz.png",
+        "GameClient/assets/textures/space_cube2/nz.png"
     };
     m_cube_map_texture = Texture{cubemap_paths};
 
@@ -524,6 +524,13 @@ void Match::SetUpCollisionEngine()
             m_boundary_ball_ptr->ClearReflection();
         }
     );
+
+    red_min_mouse_pos = glm::vec2(-width/2.0f, 0.0f);
+    red_max_mouse_pos = glm::vec2(width/2.0f, side_border_lenght/2.0f);
+
+    green_min_mouse_pos = glm::vec2(-width/2.0f, side_border_lenght/2.0f);
+    green_max_mouse_pos = glm::vec2(width/2.0f, 0.0f);
+
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
             m_collision_engine.ResolvePlayerCicleXCollision(m_boundary_red_player_ptr, width/2.0f, -width/2.0f);
@@ -639,6 +646,8 @@ void Match::DrawScene()
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+    m_collision_engine.RunCollisionLoop(true);  //make this in another thread later
+
     m_boundary_red_player_ptr->Move();
     m_boundary_green_player_ptr->Move();
     m_boundary_ball_ptr->Move();
@@ -646,8 +655,6 @@ void Match::DrawScene()
     m_boundary_red_player_ptr->Update();
     m_boundary_green_player_ptr->Update();
     m_boundary_ball_ptr->Update();
-
-    m_collision_engine.RunCollisionLoop(true);  //make this in another thread later
 
 
     m_pointLight.StartFillingShadowBuffer();
@@ -711,7 +718,7 @@ void Match::ListenKeysPressed()
     online_inputs[0].x = 0.0f;
     online_inputs[0].y = 0.0f;
     ReadOnlineEvents();
-    CheckAndSendLastEventsToServer();
+    //CheckAndSendLastEventsToServer();
 }
 
 void Match::ProcessPendingNavigation()
@@ -738,9 +745,14 @@ void Match::SetupUI()
         SetupBottomMenu();
 
     m_ui->DrawGlobalSettings([this](){
-        UIWidgets::Checkbox("Camera Settings -------------", &m_show_camera_settings, 2.0f);
+        {
+            ScopedFontScale headerFontScale(2.0f);
+            ImGui::SetNextItemOpen(m_show_camera_settings);
+            m_show_camera_settings = ImGui::CollapsingHeader("Camera Settings##camera");
+        }
         if (m_show_camera_settings)
         {
+            ImGui::Indent();
             float height{m_camera_ptr->GHeight()};
             float distance{m_camera_ptr->GRadius()};
             float angle{m_camera_ptr->GAngle()};
@@ -759,11 +771,19 @@ void Match::SetupUI()
                 m_camera_ptr->SetGAngle(angle);
             }
             ImGui::Spacing();
+            ImGui::Unindent();
         }
 
-        UIWidgets::Checkbox("Game Settings -------------", &m_show_game_settings, 2.0f);
+        ImGui::Spacing();
+
+        {
+            ScopedFontScale headerFontScale(2.0f);
+            ImGui::SetNextItemOpen(m_show_game_settings);
+            m_show_game_settings = ImGui::CollapsingHeader("Game Settings##game");
+        }
         if (m_show_game_settings)
         {
+            ImGui::Indent();
             float ball_mass{m_boundary_ball_ptr->Mass()};
             float handle_mass{m_boundary_green_player_ptr->Mass()};
             float handle_speed{m_boundary_green_player_ptr->UserSpeedPerSecond()};
@@ -784,16 +804,24 @@ void Match::SetupUI()
                 m_boundary_green_player_ptr->SetUserSpeedPerSecond(handle_speed);
             }
             ImGui::Spacing();
+            ImGui::Unindent();
         }
 
-        UIWidgets::Checkbox("Player Red Control Settings -------------", &m_show_red_controls_settings, 2.0f);
+        ImGui::Spacing();
+
+        {
+            ScopedFontScale headerFontScale(2.0f);
+            ImGui::SetNextItemOpen(m_show_red_controls_settings);
+            m_show_red_controls_settings = ImGui::CollapsingHeader("Player Red Control Settings##redctrl");
+        }
         if (m_show_red_controls_settings)
         {
+            ImGui::Indent();
             UIWidgets::Label(m_ui->CreateDirectionString(true).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
             bool isRedMouse = m_player_red.GetControllerType() == Controller::ControllerType::Mouse;
-            if(UIWidgets::Checkbox("Enable Red Mouse Controls", &isRedMouse, 1.5f))
+            if (UIWidgets::Checkbox("Enable Red Mouse Controls", &isRedMouse, 1.5f))
             {
-                if(isRedMouse)
+                if (isRedMouse)
                 {
                     GiveMouseControls(GameEventData::ObjectType::Red);
                     DeterminePassInputs();
@@ -804,16 +832,24 @@ void Match::SetupUI()
                     DeterminePassInputs();
                 }
             }
+            ImGui::Unindent();
         }
 
-        UIWidgets::Checkbox("Player Green Control Settings -------------", &m_show_green_controls_settings, 2.0f);
+        ImGui::Spacing();
+
+        {
+            ScopedFontScale headerFontScale(2.0f);
+            ImGui::SetNextItemOpen(m_show_green_controls_settings);
+            m_show_green_controls_settings = ImGui::CollapsingHeader("Player Green Control Settings##greenctrl");
+        }
         if (m_show_green_controls_settings)
         {
+            ImGui::Indent();
             UIWidgets::Label(m_ui->CreateDirectionString(false).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
             bool isGreenMouse = m_player_green.GetControllerType() == Controller::ControllerType::Mouse;
-            if(UIWidgets::Checkbox("Enable Green Mouse Controls", &isGreenMouse, 1.5f))
+            if (UIWidgets::Checkbox("Enable Green Mouse Controls", &isGreenMouse, 1.5f))
             {
-                if(isGreenMouse)
+                if (isGreenMouse)
                 {
                     GiveMouseControls(GameEventData::ObjectType::Green);
                     DeterminePassInputs();
@@ -824,15 +860,29 @@ void Match::SetupUI()
                     DeterminePassInputs();
                 }
             }
+            ImGui::Unindent();
         }
     }); 
 }
 
 void Match::SetupScoreBar()
 {
+    int red_ping_ms, green_ping_ms;
+    if (m_local_player_type == GameEventData::Red)
+    {
+        green_ping_ms = m_last_opponent_game_event.m_lag_ms;
+        red_ping_ms = m_local_game_event_window.Lag();
+    }
+    else 
+    {
+        red_ping_ms = m_last_opponent_game_event.m_lag_ms;
+        green_ping_ms = m_local_game_event_window.Lag();
+    }
+    
     m_ui->DrawScoreHUD(
         "Player Red", m_game_session_data.RedScore(),
-        "Player Green", m_game_session_data.GreenScore()
+        "Player Green", m_game_session_data.GreenScore(),
+        red_ping_ms, green_ping_ms, m_match_type == MatchType::Online
     );
 }
 
@@ -1060,6 +1110,9 @@ void Match::InitializePassInputs()
                 m_camera_ptr->position.z + t*ray_wor.z
             };
 
+            if (pos.x > max_mouse_pos.x || pos.y > max_mouse_pos.y || pos.x < min_mouse_pos.x || pos.y > min_mouse_pos.y)
+                pos = glm::vec2{1000.0f, 1000.0f};
+
             if (ImGui::IsKeyDown(ImGuiKey_Z))
             {
                 std::cout << "t: " << t << std::endl;
@@ -1246,6 +1299,8 @@ void Match::DeterminePassInputs()
         break;
     case Controller::ControllerType::Mouse:
         PassRedInputs = PassMouseXZPos;
+        min_mouse_pos = red_min_mouse_pos;
+        max_mouse_pos = red_max_mouse_pos;
         break;
     case Controller::ControllerType::Online:
         PassRedInputs = PassOnlineControls;
@@ -1262,6 +1317,8 @@ void Match::DeterminePassInputs()
         break;
     case Controller::ControllerType::Mouse:
         PassGreenInputs = PassMouseXZPos;
+        min_mouse_pos = green_min_mouse_pos;
+        max_mouse_pos = green_max_mouse_pos;
         break;
     case Controller::ControllerType::Online:
         PassGreenInputs = PassOnlineControls;

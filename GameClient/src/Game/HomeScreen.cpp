@@ -76,8 +76,8 @@ void HomeScreen::SetupUI()
 
 void HomeScreen::DrawMenu()
 {
-    float display_width = m_ui->DisplaySizeX() * 0.8f;
-    float display_height = m_ui->DisplaySizeY() * 0.7;
+    float display_width  = m_ui->DisplaySizeX() * 0.8f;
+    float display_height = m_ui->DisplaySizeY() * 0.7f;
     float startx = m_ui->DisplaySizeX() * 0.1f;
     float starty = m_ui->DisplaySizeY() * 0.1f;
     ImGui::SetNextWindowPos(ImVec2(startx, starty));
@@ -87,123 +87,160 @@ void HomeScreen::DrawMenu()
         ImGuiWindowFlags_NoDecoration |
         ImGuiWindowFlags_NoSavedSettings;
 
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.55f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+
     ImGui::Begin("HomeScreen", nullptr, flags);
 
+    // ---- Title block ----
     ImGui::SetCursorPosY((ImGui::GetWindowHeight() - 380.0f) * 0.5f);
-    UIWidgets::Label("SPACE HOCKEY", 2.5f, UIWidgets::HorizontalLayout::Middle);
+    UIWidgets::Label("SPACE HOCKEY", 3.5f, UIWidgets::HorizontalLayout::Middle);
+    UIWidgets::Label("A fast-paced arcade showdown", 2.2f, UIWidgets::HorizontalLayout::Middle);
 
     ImGui::Spacing();
     ImGui::Spacing();
-
-    UIWidgets::InputField("Username:", m_player_name, sizeof(m_player_name), 1.5f, UIWidgets::HorizontalLayout::Middle);
-
     ImGui::Spacing();
 
-    if (UIWidgets::Button("Human vs Computer", 1.5f, UIWidgets::HorizontalLayout::Middle))
-    {
-        m_ui->Username = m_player_name;
-        // InitMatch(GameMode::Bot);
-    }
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
-
-    if (UIWidgets::Button("Human vs Human", 1.5f, UIWidgets::HorizontalLayout::Middle))
+    // ---- Menu buttons ----
+    if (UIWidgets::Button("Human vs Human", 2.0f, UIWidgets::HorizontalLayout::Middle))
     {
         m_ui->Username = m_player_name;
         c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Keyboard2;
+        m_match_type = Match::MatchType::Offline;
         m_ui->m_match_requested = true;
     }
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+    ImGui::Dummy(ImVec2(0.0f, 14.0f));
 
-    if (UIWidgets::Button("Show Online Matchmaking", 1.5f, UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Show Online Matchmaking", 2.0f, UIWidgets::HorizontalLayout::Middle))
     {
         m_show_matchmaking_menu = true;
         RefreshOnlineGameSessionList();
     }
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+    ImGui::Dummy(ImVec2(0.0f, 14.0f));
 
-    if (UIWidgets::Button("Settings", 1.5f, UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Settings", 2.0f, UIWidgets::HorizontalLayout::Middle))
     {
         m_ui->m_show_settings = true;
     }
 
     ImGui::End();
-    
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
 }
 
 void HomeScreen::DrawOnlineMatchMakingMenu()
 {
-    float display_width = m_ui->DisplaySizeX() * 0.7f;
-    float display_height = m_ui->DisplaySizeY() * 0.7;
+    float display_width  = m_ui->DisplaySizeX() * 0.7f;
+    float display_height = m_ui->DisplaySizeY() * 0.7f;
     float startx = m_ui->DisplaySizeX() * 0.15f;
     float starty = m_ui->DisplaySizeY() * 0.15f;
+
     ImGui::SetNextWindowPos(ImVec2(startx, starty));
     ImGui::SetNextWindowSize(ImVec2(display_width, display_height));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
-    ImGui::Begin(
-        "Online Matchmaking -------------", nullptr, ImGuiWindowFlags_NoTitleBar
-    );
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.75f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 20.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
 
+    ImGui::Begin("Online Matchmaking", nullptr, ImGuiWindowFlags_NoTitleBar);
     ImGui::SetWindowFontScale(1.5f);
-    std::string back{"Back To Menu"};
-    ImVec2 back_size = ImGui::CalcTextSize(back.c_str());
-    back_size.x += 10;
-    back_size.y += 10;
-    ImGui::SetCursorPosX(display_width - back_size.x);
-    if (ImGui::Button(back.c_str(), back_size))
+
+    float content_width = ImGui::GetContentRegionAvail().x;
+
+    // ---- Header row: title (left), refresh + back (right) ----
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Online Matchmaking");
+
+    const float button_pad = 10.0f;
+    ImVec2 back_size    = ImGui::CalcTextSize("Back To Menu");
+    back_size.x    += button_pad * 2.0f;
+    back_size.y    += button_pad;
+    ImVec2 refresh_size = ImGui::CalcTextSize("Refresh List");
+    refresh_size.x += button_pad * 2.0f;
+    refresh_size.y += button_pad;
+
+    float header_buttons_width = refresh_size.x + back_size.x + style.padding.x;
+    ImGui::SameLine(content_width - header_buttons_width);
+
+    if (ImGui::Button("Refresh List", refresh_size))
+    {
+        RefreshOnlineGameSessionList();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Back To Menu", back_size))
     {
         m_show_matchmaking_menu = false;
     }
 
-    std::string refresh{"Refresh List"};
-    ImVec2 refresh_size = ImGui::CalcTextSize(back.c_str());
-    refresh_size.x += 10;
-    refresh_size.y += 10;
-    ImGui::SameLine((display_width - refresh_size.x)/2.0f);
-    if (ImGui::Button(refresh.c_str(), refresh_size))
-    {
-        RefreshOnlineGameSessionList();
-    }
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // ---- Create match row ----
+    ImGui::TextDisabled("Create New Match");
+    ImGui::Spacing();
 
     UIWidgets::InputField("      Match Name:", m_match_name, sizeof(m_match_name), 1.5f, UIWidgets::HorizontalLayout::Left);
     ImGui::SameLine();
     if (UIWidgets::Button("Create Match", 1.5f, UIWidgets::HorizontalLayout::Middle))
     {
-        std::shared_ptr<std::string> message{std::make_shared<std::string>(m_match_name)};
-        if (!message->empty())
+        std::string name{m_match_name};
+        if (!name.empty())
         {
             std::shared_ptr<std::string> connect_message{std::make_shared<std::string>(
                 std::format(
                     "{}{}{}{}",
-                    contract(Action::Create),contract(Action::Deliminator),
-                    *message,contract(Action::EndDeliminator)
+                    contract(Action::Create), contract(Action::Deliminator),
+                    name,                      contract(Action::EndDeliminator)
                 )
             )};
             m_con->tcpC.Send(connect_message, true);
         }
         else
         {
-            std::cout << "Create Match::message->empty()" << std::endl;
+            std::cout << "Create Match: name is empty" << std::endl;
         }
     }
 
-    for (size_t i = 0; i < game_sessions.size(); i++)
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // ---- Session list ----
+    ImGui::TextDisabled("Available Matches");
+    ImGui::Spacing();
+
+    ImGui::BeginChild("SessionList", ImVec2(0, 0), false);
+
+    if (game_sessions.empty())
     {
-        ImGui::PushID(static_cast<int>(i));
-        UIWidgets::OnlineMatch(
-            game_sessions[i],
-            [this, match_id = game_sessions[i].MatchId()](int player_type){
-                joining_session.match_id = match_id;
-                SendJoinReq(match_id, player_type);
-            },
-            1.5f
-        );
         ImGui::Spacing();
-        ImGui::PopID();
+        ImGui::TextDisabled("No matches found. Try refreshing or create one above.");
     }
-    
+    else
+    {
+        for (size_t i = 0; i < game_sessions.size(); i++)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            UIWidgets::OnlineMatch(
+                game_sessions[i],
+                [this, match_id = game_sessions[i].MatchId()](int player_type){
+                    joining_session.match_id = match_id;
+                    SendJoinReq(match_id, player_type);
+                },
+                1.5f
+            );
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::PopID();
+        }
+    }
+
+    ImGui::EndChild();
 
     ImGui::End();
-    ImGui::PopStyleColor(); 
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor();
 }
 
 void HomeScreen::DrawScene()

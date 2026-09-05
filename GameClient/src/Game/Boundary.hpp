@@ -12,8 +12,8 @@
 #include "../UI/UI.hpp"
 #include <algorithm>
 
-constexpr int player_interpolation_duration_short_ms{400};
-constexpr int ball_interpolation_duration_short_ms{400};
+constexpr int player_interpolation_duration_short_ms{200};
+constexpr int ball_interpolation_duration_short_ms{200};
 constexpr int player_interpolation_duration_long_ms{1500};
 constexpr int ball_interpolation_duration_long_ms{1500};
 

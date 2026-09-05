@@ -76,14 +76,43 @@ void Controller::InitControllers()
 
     Mouse_Listner = std::function<void(const std::vector<glm::vec2>&)>{
         [this](const std::vector<glm::vec2>& pos){
+            if(pos[0].x > 100.0f)
+                return;
             glm::vec2 dir = pos[0] - m_boundary_ptr->Origin();
-            if (glm::dot(dir, dir) > 0.00001)
+            if (glm::dot(dir, dir) > 0.1f)
             {
-                m_boundary_ptr->SetUserVelocity(glm::normalize(dir));
+                dir = dir/0.2f;
+                m_resting_event_sent = false;
+                m_boundary_ptr->SetVelocity(dir);
+                
+                float old_speed = glm::length(m_mouse_old_vel_check);
+                float new_speed = glm::length(dir);
+                glm::vec2 new_vel_dir = glm::normalize(dir);
+
+                bool ten_percent_bigger = new_speed >= old_speed * 1.30f;
+                bool ten_percent_smaller = new_speed <= old_speed * 0.70f;
+                bool direction_changed = glm::dot(m_mouse_old_vel_dir_check, new_vel_dir) < 0.9f;
+
+                if(ten_percent_bigger || ten_percent_smaller || direction_changed)
+                {
+                    std::cout << "Mouse::Distance Moving Event\n";
+                    m_mouse_old_vel_check = dir;
+                    m_mouse_old_vel_dir_check = new_vel_dir;
+                    SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
+                }
             }
             else
             {
                 m_boundary_ptr->SetUserVelocity(glm::vec2(0.0f, 0.0f));
+                if (!m_resting_event_sent)
+                {
+                    std::cout << "Mouse::Distance Resting Event\n";
+                    m_resting_event_sent = true;
+                    m_mouse_old_vel_check = glm::vec2(0.0f, 0.0f);
+                    SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
+                }
+                
+                //m_mouse_old_pos_check = pos[0];
             }
         }
     };

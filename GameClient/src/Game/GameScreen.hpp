@@ -17,13 +17,15 @@ class GameScreen
 protected:
     std::shared_ptr<glm::ivec2> m_shared_resolution;
     Framebuffer m_displayBuffer;
+    Framebuffer m_resolveBuffer; // for ms
     std::shared_ptr<UI> m_ui;
     std::shared_ptr<Connection> m_con;
 public:
     GameScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr,
-        std::shared_ptr<Connection>& con
+        std::shared_ptr<Connection>& con,
+        int samples = 0
     );
 
     virtual ~GameScreen();

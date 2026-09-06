@@ -88,15 +88,18 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
 
     ImGui::SetWindowFontScale(2.0f);
 
+    float topY = ImGui::GetCursorPosY(); // anchor point for the right-side button stack
+
     std::string score_text = std::to_string(leftScore) + " : " + std::to_string(rightScore);
 
     ImVec2 leftNameSize = ImGui::CalcTextSize(leftName.c_str());
     ImVec2 scoreSize    = ImGui::CalcTextSize(score_text.c_str());
 
-    float leftNameX  = display_width * 0.38f - leftNameSize.x; // ends near 38%, biased toward center
-    float rightNameX = display_width * 0.62f;                   // mirrored start
+    float leftNameX  = display_width * 0.38f - leftNameSize.x;
+    float rightNameX = display_width * 0.62f;
     float scoreX     = display_width * 0.5f - scoreSize.x * 0.5f;
 
+    // ---- Row 1: names + score ----
     ImGui::SetCursorPosX(leftNameX);
     ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", leftName.c_str());
 
@@ -106,7 +109,7 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
     ImGui::SameLine(rightNameX);
     ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", rightName.c_str());
 
-    // ---- Per-player ping row (online matches only) ----
+    // ---- Row 2: ping, centered under each name (online matches only) ----
     if (is_online)
     {
         ImGui::SetWindowFontScale(1.2f);
@@ -122,38 +125,49 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
 
         ImVec2 redPingSize   = ImGui::CalcTextSize(red_ping_text.c_str());
         ImVec2 greenPingSize = ImGui::CalcTextSize(green_ping_text.c_str());
+        float greenNameSizeX = ImGui::CalcTextSize(rightName.c_str()).x;
 
-        float redPingX   = display_width * 0.38f - redPingSize.x;
-        float greenPingX = display_width * 0.62f;
+        float redPingCenterX   = leftNameX + leftNameSize.x * 0.5f - redPingSize.x * 0.5f;
+        float greenPingCenterX = rightNameX + greenNameSizeX * 0.5f - greenPingSize.x * 0.5f;
 
-        ImGui::SetCursorPosX(redPingX);
+        ImGui::SetCursorPosX(redPingCenterX);
         ImGui::TextColored(PingColor(red_ping_ms), "%s", red_ping_text.c_str());
 
-        ImGui::SameLine(greenPingX);
+        ImGui::SameLine(greenPingCenterX);
         ImGui::TextColored(PingColor(green_ping_ms), "%s", green_ping_text.c_str());
 
         ImGui::SetWindowFontScale(2.0f);
     }
 
-    // ---- Top-right / top-left buttons ----
-    std::string settings{"Settings"};
-    ImVec2 settings_size = ImGui::CalcTextSize(settings.c_str());
-    settings_size.x += 20;
-    settings_size.y += 10;
-    ImGui::SameLine(display_width - settings_size.x - 10);
-    if (ImGui::Button(settings.c_str(), settings_size))
-    {
-        m_show_settings = !m_show_settings;
-    }
-
+    // ---- Right side: Quit (top), Settings (below), stacked independently of the rows above ----
     std::string quit{"Quit"};
     ImVec2 quit_size = ImGui::CalcTextSize(quit.c_str());
     quit_size.x += 20;
     quit_size.y += 10;
-    ImGui::SameLine(10);
+
+    std::string settings{"Settings"};
+    ImVec2 settings_size = ImGui::CalcTextSize(settings.c_str());
+    settings_size.x += 20;
+    settings_size.y += 10;
+
+    float right_margin = 10.0f;
+    float button_gap   = 8.0f;
+
+    float quitX     = display_width - quit_size.x - right_margin;
+    float settingsX = display_width - settings_size.x - right_margin;
+    float quitY     = topY;
+    float settingsY = topY + quit_size.y + button_gap;
+
+    ImGui::SetCursorPos(ImVec2(quitX, quitY));
     if (ImGui::Button(quit.c_str(), quit_size))
     {
         m_home_requested = true;
+    }
+
+    ImGui::SetCursorPos(ImVec2(settingsX, settingsY));
+    if (ImGui::Button(settings.c_str(), settings_size))
+    {
+        m_show_settings = !m_show_settings;
     }
 
     ImGui::SetWindowFontScale(1.0f);

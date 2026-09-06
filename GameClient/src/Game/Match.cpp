@@ -7,7 +7,7 @@ Match::Match(
     std::shared_ptr<Connection>& con,
     MatchType match_type,
     GameSessionData game_session_data
-) : GameScreen(shared_resolution, ui_ptr, con),
+) : GameScreen(shared_resolution, ui_ptr, con, 4),
     m_player_red(GameEventData::ObjectType::Red, player1_controller),
     m_player_green(GameEventData::ObjectType::Green, player2_controller),
     old_red_keyboard(player1_controller),
@@ -145,12 +145,12 @@ void Match::InitScene()
     Texture floor_texture{"GameClient/assets/textures/base.png"};
     Texture ball_texture{"GameClient/assets/textures/ball.png"};
     std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/space_cube2/px.png",
-        "GameClient/assets/textures/space_cube2/nx.png",
-        "GameClient/assets/textures/space_cube2/py.png",
-        "GameClient/assets/textures/space_cube2/ny.png",
-        "GameClient/assets/textures/space_cube2/pz.png",
-        "GameClient/assets/textures/space_cube2/nz.png"
+        "GameClient/assets/textures/space_cube3/px.png",
+        "GameClient/assets/textures/space_cube3/nx.png",
+        "GameClient/assets/textures/space_cube3/py.png",
+        "GameClient/assets/textures/space_cube3/ny.png",
+        "GameClient/assets/textures/space_cube3/pz.png",
+        "GameClient/assets/textures/space_cube3/nz.png"
     };
     m_cube_map_texture = Texture{cubemap_paths};
 
@@ -528,7 +528,7 @@ void Match::SetUpCollisionEngine()
     red_min_mouse_pos = glm::vec2(-width/2.0f, 0.0f);
     red_max_mouse_pos = glm::vec2(width/2.0f, side_border_lenght/2.0f);
 
-    green_min_mouse_pos = glm::vec2(-width/2.0f, side_border_lenght/2.0f);
+    green_min_mouse_pos = glm::vec2(-width/2.0f, -side_border_lenght/2.0f);
     green_max_mouse_pos = glm::vec2(width/2.0f, 0.0f);
 
     m_collision_engine.CollisionLoop.emplace_back(
@@ -1110,7 +1110,7 @@ void Match::InitializePassInputs()
                 m_camera_ptr->position.z + t*ray_wor.z
             };
 
-            if (pos.x > max_mouse_pos.x || pos.y > max_mouse_pos.y || pos.x < min_mouse_pos.x || pos.y > min_mouse_pos.y)
+            if (pos.x > max_mouse_pos.x || pos.y > max_mouse_pos.y || pos.x < min_mouse_pos.x || pos.y < min_mouse_pos.y)
                 pos = glm::vec2{1000.0f, 1000.0f};
 
             if (ImGui::IsKeyDown(ImGuiKey_Z))

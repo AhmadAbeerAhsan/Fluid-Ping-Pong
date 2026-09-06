@@ -84,9 +84,14 @@ private:
     std::shared_ptr<glm::ivec2> m_shared_resolution;
     FrameBufferType m_type;
     GLbitfield m_copyMask;
-public:
-    Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2>& shared_resolution);
 
+    int m_samples{0};
+    GLenum m_tex_target{GL_TEXTURE_2D};
+public:
+    Framebuffer(FrameBufferType framebufferType, std::shared_ptr<glm::ivec2>& shared_resolution, int samples = 0);
+
+    bool IsMultisampled() const { return m_samples > 0; }
+    
     void Bind();
     void Unbind();
 

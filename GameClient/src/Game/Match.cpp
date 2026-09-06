@@ -145,12 +145,12 @@ void Match::InitScene()
     Texture floor_texture{"GameClient/assets/textures/base.png"};
     Texture ball_texture{"GameClient/assets/textures/ball.png"};
     std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/space_cube3/px.png",
-        "GameClient/assets/textures/space_cube3/nx.png",
-        "GameClient/assets/textures/space_cube3/py.png",
-        "GameClient/assets/textures/space_cube3/ny.png",
-        "GameClient/assets/textures/space_cube3/pz.png",
-        "GameClient/assets/textures/space_cube3/nz.png"
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg"
     };
     m_cube_map_texture = Texture{cubemap_paths};
 
@@ -517,6 +517,9 @@ void Match::SetUpCollisionEngine()
 {
     m_collision_engine.SendBallEventsToServer = SendBallEventsToServer;
     m_collision_engine.IsBallInOnlineSide = IsBallInOnlineSide;
+
+    UpdateTrajectories();
+    m_collision_engine.UpdateTrajectories = UpdateTrajectories;
     m_collision_engine.CollisionLoop.emplace_back(
         [this](){
             m_boundary_red_player_ptr->ClearReflection();
@@ -525,8 +528,8 @@ void Match::SetUpCollisionEngine()
         }
     );
 
-    red_min_mouse_pos = glm::vec2(-width/2.0f, 0.0f);
-    red_max_mouse_pos = glm::vec2(width/2.0f, side_border_lenght/2.0f);
+    red_min_mouse_pos = glm::vec2(-width/2.0f,  0.0f);
+    red_max_mouse_pos = glm::vec2(width/2.0f,   side_border_lenght/2.0f);
 
     green_min_mouse_pos = glm::vec2(-width/2.0f, -side_border_lenght/2.0f);
     green_max_mouse_pos = glm::vec2(width/2.0f, 0.0f);
@@ -945,6 +948,7 @@ void Match::SpawnRedWithServe()
         m_local_player_type
     );
     SendBallEventsToServer();
+    UpdateTrajectories();
 }
 
 void Match::SpawnGreenWithServe()
@@ -971,6 +975,7 @@ void Match::SpawnGreenWithServe()
         m_local_player_type
     );
     SendBallEventsToServer();
+    UpdateTrajectories();
 }
 
 void Match::SpawnRedWithoutServe(int inverse_r)
@@ -1158,6 +1163,61 @@ void Match::InitializePassInputs()
         }
     };
 
+    UpdateTrajectories = std::function<void()>{
+        [this](){
+            m_trajectries[0] = LineXZ(m_boundary_ball_ptr->Origin(), m_boundary_ball_ptr->Velocity(), green_max_mouse_pos, green_min_mouse_pos);
+            m_trajectries[1] = m_trajectries[0].GetReflectedLineFromX();
+            m_trajectries[2] = m_trajectries[1].GetReflectedLineFromX();
+
+            m_chosen_i = -1;
+
+            std::cout << "UpdateTrajectories\n";
+        }
+    };
+    PassBotControls = std::function<const std::vector<glm::vec2>()>{
+        [this](){
+            glm::vec2 direction{0.0f, 0.0f};
+            
+            if (m_chosen_i >= 0)
+                direction = m_trajectries[m_chosen_i].PerpendicularDirection(m_boundary_green_player_ptr->Origin());
+            else
+            {
+                int i = 0;
+                int chosen_i = 0;
+                float min = 1000;
+                for(LineXZ& traj : m_trajectries)
+                {
+                    glm::vec2 new_dir = traj.PerpendicularDirection(m_boundary_green_player_ptr->Origin());
+                    float new_len = glm::length(new_dir);
+                    if(new_len < min)
+                    {
+                        min = new_len;
+                        direction = new_dir;
+                        chosen_i = i;
+                    }
+                    i++;
+                }
+                m_chosen_i = chosen_i;
+            }
+
+            glm::vec2 handle_to_ball = m_boundary_ball_ptr->Origin() - m_boundary_green_player_ptr->Origin();
+            if(glm::length(handle_to_ball) < 10.0f)
+            {
+                direction = handle_to_ball + glm::vec2(0.0f, -m_ball_radius);
+            }
+            else if(direction.x > 100.0f)
+            {
+                if (handle_to_ball.x < 0.0f)
+                    direction = glm::vec2(-1.0f, 0.0f);
+                else if(handle_to_ball.x > 0.0f)
+                    direction = glm::vec2(1.0f, 0.0f);
+            }
+
+            //std::cout << "Pos: " << direction.x << "," << direction.y << std::endl;
+            return std::vector<glm::vec2>{direction};
+        }
+    };
+
     if (m_match_type == MatchType::Online)
     {
         if (m_player_red.GetControllerType() == Controller::ControllerType::Online)
@@ -1323,6 +1383,9 @@ void Match::DeterminePassInputs()
     case Controller::ControllerType::Online:
         PassGreenInputs = PassOnlineControls;
         m_player_red.SendData = SendLocalPlayerDataToServer;
+        break;
+    case Controller::ControllerType::Bot:
+        PassGreenInputs = PassBotControls;
         break;
     default:
         break;

@@ -97,6 +97,7 @@ void CollisionEngine::ResolvePlayerCircleToCicleCollision(std::shared_ptr<Bounda
             c1_ptr->Tranaslate(-n * penetration);
         }
     }
+    UpdateTrajectories();
     SendBallEventsToServer();
 }
 
@@ -114,6 +115,7 @@ void CollisionEngine::ResolveBoundaryLineToCicleCollision(std::shared_ptr<Bounda
     }
 
     c2_ptr->Reflect(other_line->Normal());
+    UpdateTrajectories();
 }
 
 void CollisionEngine::ResolvePlayerCicleXCollision(std::shared_ptr<Boundary> &c1_ptr, float max, float min)

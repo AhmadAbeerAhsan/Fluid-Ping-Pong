@@ -81,7 +81,7 @@ void Controller::InitControllers()
             glm::vec2 dir = pos[0] - m_boundary_ptr->Origin();
             if (glm::dot(dir, dir) > 0.1f)
             {
-                dir = dir/0.2f;
+                dir = dir/0.1f;
                 m_resting_event_sent = false;
                 m_boundary_ptr->SetVelocity(dir);
                 
@@ -132,6 +132,18 @@ void Controller::InitControllers()
         }
     };
 
+    Bot_Listner = std::function<void(const std::vector<glm::vec2>&)>{
+        [this](const std::vector<glm::vec2>& pos){
+            if(pos[0].x > 100.0f || glm::dot(pos[0], pos[0]) < 0.01f)
+            {
+                m_boundary_ptr->SetVelocity(glm::vec2(0.0f, 0.0f));
+                m_boundary_ptr->SetVelocity(glm::vec2(0.0f, 0.0f));
+            }
+            else
+                m_boundary_ptr->SetUserVelocity(glm::normalize(pos[0]));    
+        }
+    };
+
     SendData = std::function<void(const glm::vec2&, const glm::vec2&, GameEventData::ObjectType&)>{
         [](const glm::vec2& pos, const glm::vec2& vel, GameEventData::ObjectType& player_type){}
     };
@@ -164,6 +176,9 @@ void Controller::SetControllerType()
         break;
     case ControllerType::Online:
         ListenInput = Online_Listner;
+        break;
+    case ControllerType::Bot:
+        ListenInput = Bot_Listner;
         break;
     default:
         break;

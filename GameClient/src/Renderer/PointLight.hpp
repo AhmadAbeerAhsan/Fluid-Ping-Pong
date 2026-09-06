@@ -18,7 +18,7 @@ private:
 public:
     PointLight(
         std::shared_ptr<glm::ivec2> shared_resolution,
-        glm::vec4 global_ambient = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f),
+        glm::vec4 global_ambient = glm::vec4(0.55f, 0.55f, 1.0f, 1.0f),
         glm::vec4 ambient = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
         glm::vec4 diffusion = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
         glm::vec4 specular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),

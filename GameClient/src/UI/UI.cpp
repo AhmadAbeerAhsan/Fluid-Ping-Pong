@@ -90,6 +90,18 @@ void UI::DrawScoreHUD(const std::string& leftName, int leftScore,
 
     float topY = ImGui::GetCursorPosY(); // anchor point for the right-side button stack
 
+     // ---- FPS counter, top-left ----
+    {
+        ImGui::SetWindowFontScale(1.0f);
+        float fps = ImGui::GetIO().Framerate;
+        ImVec4 fps_color = fps >= 55.0f ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
+                          : fps >= 30.0f ? ImVec4(1.0f, 0.85f, 0.3f, 1.0f)
+                                         : ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+        ImGui::SetCursorPos(ImVec2(10.0f, topY));
+        ImGui::TextColored(fps_color, "%.0f FPS", fps);
+        ImGui::SetWindowFontScale(2.0f);
+    }
+
     std::string score_text = std::to_string(leftScore) + " : " + std::to_string(rightScore);
 
     ImVec2 leftNameSize = ImGui::CalcTextSize(leftName.c_str());

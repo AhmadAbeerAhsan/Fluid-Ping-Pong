@@ -9,6 +9,7 @@ add_library(
     BoundaryCircle.cpp
     BoundaryLine.cpp
     LocalPlayerGameEventWindow.cpp
+    LineXZ.cpp
 )
 
 target_link_libraries(Game

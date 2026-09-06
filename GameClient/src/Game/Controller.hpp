@@ -37,6 +37,7 @@ private:
     std::function<void(const std::vector<glm::vec2>&)> Keyboard_2_Listner;
     std::function<void(const std::vector<glm::vec2>&)> Mouse_Listner;
     std::function<void(const std::vector<glm::vec2>&)> Online_Listner;
+    std::function<void(const std::vector<glm::vec2>&)> Bot_Listner;
 
     GameEventData::ObjectType m_player_type;
     ControllerType m_controller_type;

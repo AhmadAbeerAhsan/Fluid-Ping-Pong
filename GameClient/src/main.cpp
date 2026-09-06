@@ -54,7 +54,7 @@ int main()
 
     screen.reset(new Match(
         Controller::ControllerType::Keyboard1,
-        Controller::ControllerType::Keyboard2,
+        Controller::ControllerType::Bot,
         shared_resolution,
         ui_ptr,
         con,

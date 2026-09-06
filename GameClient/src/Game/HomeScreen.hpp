@@ -24,6 +24,13 @@ private:
     std::vector<GameSessionData> game_sessions{};
     void RefreshOnlineGameSessionList();
     void SendJoinReq(int match_id, int player_type);
+
+    void InitScene();
+    std::shared_ptr<Camera> m_camera_ptr;
+    Texture m_cube_map_texture;
+    Shader m_texture_cubemap_shader;
+    Model m_cube_skybox{};
+    
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,

@@ -5,9 +5,10 @@
 #include "BoundaryCircle.hpp"
 #include "BoundaryLine.hpp"
 #include "CollisionEngine.hpp"
-#include "../Renderer/Renderer.hpp"
+#include "../Renderer/Camera.hpp"
 #include "../Renderer/PointLight.hpp"
 #include "LocalPlayerGameEventWindow.hpp"
+#include "LineXZ.hpp"
 #include <random>
 #include <chrono>
 
@@ -151,6 +152,11 @@ private:
     std::function<void()> SendBallEventsToServer;
     std::function<bool(float)> IsBallInOnlineSide;
     std::function<void()> SendLeaveReq;
+
+    std::array<LineXZ, 3> m_trajectries{};
+    int m_chosen_i{-1};
+    std::function<void()> UpdateTrajectories;
+    std::function<const std::vector<glm::vec2>()> PassBotControls;
 
     bool m_is_first_local_player_event_sent{false};
     bool m_is_first_local_ball_event_sent{false};

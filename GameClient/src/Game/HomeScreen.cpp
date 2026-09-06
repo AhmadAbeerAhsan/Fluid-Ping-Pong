@@ -28,6 +28,56 @@ void HomeScreen::SendJoinReq(int match_id, int player_type)
     m_con->udpC.StartSend(connect_message);
 }
 
+void HomeScreen::InitScene()
+{
+    m_camera_ptr = std::make_shared<Camera>(
+        100.0f, 65.0f, 90.0f,
+        m_shared_resolution,
+        45.0f,
+        0.01f, 1000.0f
+    );
+    m_camera_ptr->updatePersprectiveProj();
+    //Create Textures
+    Texture wall_texture{"GameClient/assets/textures/tile.jpg"};
+    Texture floor_texture{"GameClient/assets/textures/base.png"};
+    Texture ball_texture{"GameClient/assets/textures/ball.png"};
+    std::vector<std::string> cubemap_paths{
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
+        "GameClient/assets/textures/cube-space/blue_nebula.jpeg"
+    };
+    m_cube_map_texture = Texture{cubemap_paths};
+
+    std::cout << "Creating shader m_texture_cubemap_shader..." << std::endl;
+    m_texture_cubemap_shader = Shader{"GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl"};
+    std::cout << "m_texture_cubemap_shader id: " << *m_texture_cubemap_shader.ID << std::endl;
+    m_texture_cubemap_shader.PassUniforms = std::function<void()>{
+        [this](){
+            m_texture_cubemap_shader.setMat4("view", m_camera_ptr->skyboxView);
+            m_texture_cubemap_shader.setMat4("projection", m_camera_ptr->proj);
+        }
+    };
+
+    std::vector<glm::vec3> m_positions {};
+    std::vector<glm::vec3> m_colors {};
+    std::vector<glm::uvec3> m_indices {};
+    std::vector<glm::vec2> m_tex_coords {};
+
+    std::cout << "Generating cube map" << std::endl;
+    m_positions.clear();
+    m_colors.clear();
+    m_indices.clear();
+    m_tex_coords.clear();
+    GenerateSkyboxCube(m_positions, m_tex_coords, m_indices);
+    m_cube_skybox.SetGeometry(m_positions, m_indices, false);
+    m_cube_skybox.SetMaterial(m_cube_map_texture, m_tex_coords);
+    m_cube_skybox.SetShader(m_texture_cubemap_shader);
+    m_cube_skybox.initializeForGL();
+}
+
 HomeScreen::HomeScreen(
     std::shared_ptr<glm::ivec2> &shared_resolution,
     std::shared_ptr<UI> &ui_ptr,
@@ -49,6 +99,8 @@ HomeScreen::HomeScreen(
     fullscreen_quad.SetShader(m_screen_texture_shader);
     fullscreen_quad.initializeForGL();
     fullscreen_quad.UpdateModelMatrix();
+
+    InitScene();
 }
 
 HomeScreen::~HomeScreen()
@@ -106,6 +158,16 @@ void HomeScreen::DrawMenu()
     {
         m_ui->Username = m_player_name;
         c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Keyboard2;
+        m_match_type = Match::MatchType::Offline;
+        m_ui->m_match_requested = true;
+    }
+    ImGui::Dummy(ImVec2(0.0f, 14.0f));
+
+    // ---- Menu buttons ----
+    if (UIWidgets::Button("Human vs Bot", 2.0f, UIWidgets::HorizontalLayout::Middle))
+    {
+        m_ui->Username = m_player_name;
+        c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Bot;
         m_match_type = Match::MatchType::Offline;
         m_ui->m_match_requested = true;
     }
@@ -252,8 +314,11 @@ void HomeScreen::DrawScene()
 
     m_displayBuffer.Bind();
 
-    m_screen_texture_shader.Activate();
-    fullscreen_quad.DrawWithExternalShader(m_screen_texture_shader);
+    glDisable(GL_DEPTH_TEST);
+    m_texture_cubemap_shader.Activate();
+    m_texture_cubemap_shader.PassUniforms();
+    m_cube_skybox.DrawWithExternalShader(m_texture_cubemap_shader);
+    glEnable(GL_DEPTH_TEST);
 
     m_displayBuffer.Unbind();
 }

@@ -8,6 +8,7 @@
 
 #include "ClientServerContract.hpp"
 #include "SWSRSlidingWindow.hpp"
+#include "../Utilities/LockFreeQueue.hpp"
 
 using boost::asio::ip::udp;
 
@@ -16,8 +17,8 @@ class UdpClient
 public:
     UdpClient(
         boost::asio::io_context& io,
-        SWSRSlidingWindow<GameEventData>& game_events,
-        SWSRSlidingWindow<ErrorData>& error_messages
+        LockFreeQueue<GameEventData>& game_events,
+        LockFreeQueue<ErrorData>& error_messages
     );
 
     void StartSend(std::shared_ptr<std::string> message_ptr);
@@ -28,8 +29,8 @@ private:
     size_t recv_len;
     udp::endpoint reciever_endpoint;
 
-    SWSRSlidingWindow<GameEventData>& m_game_events;
-    SWSRSlidingWindow<ErrorData>& m_error_messages;
+    LockFreeQueue<GameEventData>& m_game_events;
+    LockFreeQueue<ErrorData>& m_error_messages;
 
     void StartRecieve();
 

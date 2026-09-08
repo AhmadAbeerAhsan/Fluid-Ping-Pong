@@ -4,6 +4,7 @@ GameScreen::GameScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr,
         std::shared_ptr<Connection>& con,
+        std::shared_ptr<AssetLoader>& assets,
         int samples
     ) :
     m_displayBuffer(Framebuffer::FrameBufferType::Color_FloatAlpha, shared_resolution, samples),
@@ -12,6 +13,7 @@ GameScreen::GameScreen(
     m_shared_resolution = shared_resolution;
     m_ui = ui_ptr;
     m_con = con;
+    m_assets = assets;
 }
 
 GameScreen::~GameScreen()

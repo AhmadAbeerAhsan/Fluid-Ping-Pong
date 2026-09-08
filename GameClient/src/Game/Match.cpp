@@ -6,8 +6,9 @@ Match::Match(
     std::shared_ptr<UI>& ui_ptr,
     std::shared_ptr<Connection>& con,
     MatchType match_type,
-    GameSessionData game_session_data
-) : GameScreen(shared_resolution, ui_ptr, con, 4),
+    GameSessionData game_session_data,
+        std::shared_ptr<AssetLoader>& assets
+) : GameScreen(shared_resolution, ui_ptr, con, assets, 4),
     m_player_red(GameEventData::ObjectType::Red, player1_controller),
     m_player_green(GameEventData::ObjectType::Green, player2_controller),
     old_red_keyboard(player1_controller),
@@ -24,12 +25,30 @@ Match::Match(
     SetUpCollisionEngine();
     start = std::chrono::steady_clock::now();
     m_last_online_event_recieved_time = std::chrono::steady_clock::now();
+
+    m_collision_thread = std::jthread{[this](std::stop_token stop_token){
+        while (!stop_token.stop_requested())
+        {
+            PassAndProcessControls();
+
+            m_collision_engine.RunCollisionLoop(true);  //make this in another thread later
+
+            m_boundary_red_player_ptr->Move();
+            m_boundary_green_player_ptr->Move();
+            m_boundary_ball_ptr->Move();
+
+            m_barrier.arrive_and_wait();
+        }
+    }};
 }
 
 
 Match::~Match()
 {
     Clean();
+    m_collision_thread.request_stop();
+    m_barrier.arrive_and_wait(); 
+    m_collision_thread.join();
     std::cout << "Match::~Match()" << std::endl;
 }
 
@@ -131,6 +150,19 @@ void Match::ProcessRecievedBallEvents(GameEventData &e)
     }
 }
 
+void Match::PassAndProcessControls()
+{
+    if (!m_ui->m_show_settings)
+    {
+        m_player_red.ListenInput(PassRedInputs());
+        m_player_green.ListenInput(PassGreenInputs());
+    }
+    online_inputs[0].x = 0.0f;
+    online_inputs[0].y = 0.0f;
+    ReadOnlineEvents();
+    //CheckAndSendLastEventsToServer();
+}
+
 void Match::InitScene()
 {
     m_camera_ptr = std::make_shared<Camera>(
@@ -141,22 +173,12 @@ void Match::InitScene()
     );
     m_camera_ptr->updatePersprectiveProj();
     //Create Textures
-    Texture wall_texture{"GameClient/assets/textures/tile.jpg"};
-    Texture floor_texture{"GameClient/assets/textures/base.png"};
-    Texture ball_texture{"GameClient/assets/textures/ball.png"};
-    std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg"
-    };
-    m_cube_map_texture = Texture{cubemap_paths};
 
     std::cout << "Creating shader m_blinn_phong_shdader..." << std::endl;
-    m_blinn_phong_shdader = Shader{"GameClient/src/Renderer/Shaders/blinn_phong.vs.glsl", "GameClient/src/Renderer/Shaders/blinn_phong.fs.glsl"};
+    m_blinn_phong_shdader = Shader{};
     std::cout << "m_blinn_phong_shdader id: " << *m_blinn_phong_shdader.ID << std::endl;
+    m_blinn_phong_shdader.Load("GameClient/src/Renderer/Shaders/blinn_phong.vs.glsl", "GameClient/src/Renderer/Shaders/blinn_phong.fs.glsl");
+    m_blinn_phong_shdader.GLCompleteShader();
     m_blinn_phong_shdader.Activate();
     m_blinn_phong_shdader.setInt("ourTexture", 0);
     m_blinn_phong_shdader.setInt("shTex", 1);
@@ -170,21 +192,21 @@ void Match::InitScene()
             m_blinn_phong_shdader.setVec2("resolution", {(float)m_shared_resolution->x, (float)m_shared_resolution->y});
             m_pointLight.PassUniformsToRendererShader();
             m_pointLight.EnableShadowTexture();
-            m_cube_map_texture.Use(GL_TEXTURE2);
+            m_assets->Textures[AssetLoader::TextureId::CubeMapTexture].Use(GL_TEXTURE2);
         }
     };
 
     std::cout << "Creating shader m_shadow_map_shdader..." << std::endl;
-    m_shadow_map_shdader = Shader{"GameClient/src/Renderer/Shaders/shadow_map.vs.glsl", "GameClient/src/Renderer/Shaders/shadow_map.fs.glsl"};
+    m_shadow_map_shdader = Shader{};
     std::cout << "m_shadow_map_shdader id: " << *m_shadow_map_shdader.ID << std::endl;
-
+    m_shadow_map_shdader.Load("GameClient/src/Renderer/Shaders/shadow_map.vs.glsl", "GameClient/src/Renderer/Shaders/shadow_map.fs.glsl");
     std::cout << "Creating shader m_texture_cubemap_shdader..." << std::endl;
-    m_texture_cubemap_shdader = Shader{"GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl"};
-    std::cout << "m_texture_cubemap_shdader id: " << *m_texture_cubemap_shdader.ID << std::endl;
-    m_texture_cubemap_shdader.PassUniforms = std::function<void()>{
+    m_shadow_map_shdader.GLCompleteShader();
+    
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].PassUniforms = std::function<void()>{
         [this](){
-            m_texture_cubemap_shdader.setMat4("view", m_camera_ptr->skyboxView);
-            m_texture_cubemap_shdader.setMat4("projection", m_camera_ptr->proj);
+            m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].setMat4("view", m_camera_ptr->skyboxView);
+            m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].setMat4("projection", m_camera_ptr->proj);
         }
     };
 
@@ -205,180 +227,6 @@ void Match::InitScene()
     std::vector<glm::uvec3> m_indices {};
     std::vector<glm::vec2> m_tex_coords {};
 
-    float diagnal_length{CalculateDiagonalLength(
-        (width - goal_lenght)/2.0f,
-        (lenght - side_border_lenght)/2.0f
-    )};
-
-
-    //right_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, min_size, min_size, side_border_lenght);
-    std::shared_ptr<Model> right_border{std::make_shared<Model>()};
-    m_models.emplace_back(right_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->Translate(glm::vec3(-1.0f * (width/2.0f + min_size/2.0f), 0, 0));
-    m_models.back()->UpdateModelMatrix();
-
-    //left_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, min_size, min_size, side_border_lenght);
-    std::shared_ptr<Model> left_border{std::make_shared<Model>()};
-    m_models.emplace_back(left_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->Translate(glm::vec3(1.0f * (width/2.0f + min_size/2.0f), 0, 0));
-    m_models.back()->UpdateModelMatrix();
-
-    glm::vec3 translation;
-    glm::vec3 rev_nor_translation;
-    glm::vec3 final_translation;
-
-    //bottom_left_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
-    std::shared_ptr<Model> bottom_left_border{std::make_shared<Model>()};
-    m_models.emplace_back(bottom_left_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->RotateY(glm::radians(-39.806f));
-    m_models.back()->Translate(glm::vec3(goal_lenght/2.0f, 0, -(lenght/2.0f)));
-    translation = glm::vec3((width - goal_lenght)/2.0f, 0.0f, (lenght - side_border_lenght)/2.0f);
-    translation = translation/2.0f;
-    rev_nor_translation = glm::normalize(glm::vec3(translation.z, translation.y, -translation.x));
-    final_translation = translation + (rev_nor_translation * min_size/2.0f);
-    m_models.back()->Translate(final_translation);
-    m_models.back()->UpdateModelMatrix();
-
-    //bottom_right_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
-    std::shared_ptr<Model> bottom_right_border{std::make_shared<Model>()};
-    m_models.emplace_back(bottom_right_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->RotateY(glm::radians(39.806f));
-    m_models.back()->Translate(glm::vec3(-goal_lenght/2.0f, 0, -(lenght/2.0f)));
-    translation = glm::vec3(-(width - goal_lenght)/2.0f, 0.0f, (lenght - side_border_lenght)/2.0f);
-    translation = translation/2.0f;
-    rev_nor_translation = glm::normalize(glm::vec3(translation.z, translation.y, -translation.x));
-    final_translation = translation - (rev_nor_translation * min_size/2.0f);
-    m_models.back()->Translate(final_translation);
-    m_models.back()->UpdateModelMatrix();
-
-    /*
-    //bottom_goal_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, goal_lenght, min_size, min_size);
-    std::shared_ptr<Model> bottom_goal_border{std::make_shared<Model>()};
-    m_models.emplace_back(bottom_goal_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader_ptr);
-    m_models.back()->initializeForGL();
-    m_models.back()->Translate(glm::vec3(0, 0, -(lenght + min_size)/2.0f));
-    m_models.back()->UpdateModelMatrix();
-    */
-   
-    //top_left_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
-    std::shared_ptr<Model> top_left_border{std::make_shared<Model>()};
-    m_models.emplace_back(top_left_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->RotateY(glm::radians(39.806f));
-    m_models.back()->Translate(glm::vec3(goal_lenght/2.0f, 0, (lenght/2.0f)));
-    translation = glm::vec3((width - goal_lenght)/2.0f, 0.0f, -(lenght - side_border_lenght)/2.0f);
-    translation = translation/2.0f;
-    rev_nor_translation = glm::normalize(glm::vec3(translation.z, translation.y, -translation.x));
-    final_translation = translation - (rev_nor_translation * min_size/2.0f);
-    m_models.back()->Translate(final_translation);
-    m_models.back()->UpdateModelMatrix();
-
-    //top_right_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, diagnal_length, min_size, min_size);
-    std::shared_ptr<Model> top_right_border{std::make_shared<Model>()};
-    m_models.emplace_back(top_right_border);
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->RotateY(glm::radians(-39.806f));
-    m_models.back()->Translate(glm::vec3(-goal_lenght/2.0f, 0, (lenght/2.0f)));
-    translation = glm::vec3(-(width - goal_lenght)/2.0f, 0.0f, -(lenght - side_border_lenght)/2.0f);
-    translation = translation/2.0f;
-    rev_nor_translation = glm::normalize(glm::vec3(translation.z, translation.y, -translation.x));
-    final_translation = translation + (rev_nor_translation * min_size/2.0f);
-    m_models.back()->Translate(final_translation);
-    m_models.back()->UpdateModelMatrix();
-
-    
-    /*
-    //top_goal_border
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateTexturedRectanle(m_positions, m_tex_coords, m_indices, goal_lenght, min_size, min_size);
-    m_models.emplace_back(std::make_shared<Model>();
-    m_models.back()->SetGeometry(m_positions, m_indices);
-    m_models.back()->SetMaterial(wall_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader_ptr);
-    m_models.back()->initializeForGL();
-    m_models.back()->Translate(glm::vec3(0, 0, (lenght + min_size)/2.0f));
-    m_models.back()->UpdateModelMatrix();
-    */
-
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateXZBase(m_positions, m_colors, m_indices, m_tex_coords, width, lenght, goal_lenght, side_border_lenght);
-    m_floor.SetGeometry(m_positions, m_indices);
-    m_floor.SetMaterial(floor_texture, m_tex_coords);
-    m_floor.m_enable_reflection = true;
-    m_floor.SetShader(m_blinn_phong_shdader);
-    m_floor.initializeForGL();
-    m_floor.Translate(glm::vec3(0, -min_size/2.0f, 0));
-    m_floor.RotateY(0.0f);
-    m_floor.UpdateModelMatrix();
-    //m_models.emplace_back(m_floor);
-
-
     float r1{1.0f}, b1{2.0f}, b2{0.5f};
     //handle
     m_positions.clear();
@@ -398,7 +246,6 @@ void Match::InitScene()
     m_models.emplace_back(handle_red);
     m_models.back()->SetGeometry(m_positions, m_indices);
     m_models.back()->SetMaterial(m_colors);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
     m_models.back()->initializeForGL();
     m_models.back()->Translate(glm::vec3(0, -min_size/2.0f, 30.0f));
     m_models.back()->UpdateModelMatrix();
@@ -421,39 +268,12 @@ void Match::InitScene()
     m_models.emplace_back(handle_green);
     m_models.back()->SetGeometry(m_positions, m_indices);
     m_models.back()->SetMaterial(m_colors);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
     m_models.back()->initializeForGL();
     m_models.back()->Translate(glm::vec3(0, -min_size/2.0f, -30.0f));
     m_models.back()->UpdateModelMatrix();
     
     m_handle_radius = r1 + b1 + b2;
-
-    //sphere
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateSphere(m_positions, m_colors, m_indices, m_tex_coords, 16, m_ball_radius);
-    std::shared_ptr<Model> sphere{std::make_shared<Model>()};
-    m_models.emplace_back(sphere);
-    m_models.back()->SetGeometry(m_positions, m_indices, true);
-    m_models.back()->SetMaterial(ball_texture, m_tex_coords);
-    m_models.back()->SetShader(m_blinn_phong_shdader);
-    m_models.back()->initializeForGL();
-    m_models.back()->Translate(glm::vec3(0, m_ball_radius - min_size/2.0f, 0));
-    m_models.back()->UpdateModelMatrix();
     
-    std::cout << "Generating cube map" << std::endl;
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateSkyboxCube(m_positions, m_tex_coords, m_indices);
-    m_cube_skybox.SetGeometry(m_positions, m_indices, false);
-    m_cube_skybox.SetMaterial(m_cube_map_texture, m_tex_coords);
-    m_cube_skybox.SetShader(m_texture_cubemap_shdader);
-    m_cube_skybox.initializeForGL();
-
     float handle_speed{20.0f};
     float handle_mass{200.0f};
     float ball_mass{50.0f};
@@ -467,7 +287,7 @@ void Match::InitScene()
     m_player_green.AssignBoundary(m_boundary_green_player_ptr);
 
     m_boundary_ball_ptr = std::make_shared<BoundaryCircle>(m_ball_radius, 0.0f, ball_mass);
-    m_boundary_ball_ptr->AssignModel(sphere);
+    m_boundary_ball_ptr->AssignModel(m_assets->Models[AssetLoader::ModelId::SphereModel]);
 
     m_boundary_left_ptr = std::make_shared<BoundaryLine>(
         glm::vec2((width)/2.0f, -(lenght)/2.0f),
@@ -649,44 +469,53 @@ void Match::DrawScene()
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    m_collision_engine.RunCollisionLoop(true);  //make this in another thread later
-
-    m_boundary_red_player_ptr->Move();
-    m_boundary_green_player_ptr->Move();
-    m_boundary_ball_ptr->Move();
-
     m_boundary_red_player_ptr->Update();
     m_boundary_green_player_ptr->Update();
     m_boundary_ball_ptr->Update();
 
+    m_barrier.arrive_and_wait();
 
     m_pointLight.StartFillingShadowBuffer();
     for (std::shared_ptr<Model>& model : m_models)
     {
         model->DrawWithExternalShader(m_pointLight.m_shadow_map_shader);
     }
+    for(int i = AssetLoader::ModelId::RightBorder; i <= AssetLoader::ModelId::SphereModel; i++)
+    {
+        m_assets->Models[i]->DrawWithInternalShader(
+            m_pointLight.m_shadow_map_shader
+        );
+    }
     m_pointLight.StopFillingShadowBuffer();
 
     m_displayBuffer.Bind();
 
     glDisable(GL_DEPTH_TEST);
-    m_texture_cubemap_shdader.Activate();
-    m_texture_cubemap_shdader.PassUniforms();
-    m_cube_skybox.DrawWithExternalShader(m_texture_cubemap_shdader);
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].Activate();
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].PassUniforms();
+    m_assets->Models[AssetLoader::ModelId::CubeMapModel]->DrawWithInternalShader(
+        m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader]
+    );
     glEnable(GL_DEPTH_TEST);
 
     m_blinn_phong_shdader.Activate();
     m_blinn_phong_shdader.PassUniforms();
     for (std::shared_ptr<Model>& model : m_models)
     {
-        model->DrawWithInternalShader();
+        model->DrawWithInternalShader(m_blinn_phong_shdader);
+    }
+    for(int i = AssetLoader::ModelId::RightBorder; i <= AssetLoader::ModelId::SphereModel; i++)
+    {
+        m_assets->Models[i]->DrawWithInternalShader(
+            m_blinn_phong_shdader
+        );
     }
     m_snapshotBuffer.CopyFrom(m_displayBuffer);
     m_displayBuffer.Bind();
     //blinn_phong_shdader_ptr->setInt("skybox", 2);
     //blinn_phong_shdader_ptr->setInt("scene", 3);
     m_snapshotBuffer.BindTexture(GL_TEXTURE3);
-    m_floor.DrawWithInternalShader(glm::mat4(1.0f));
+    m_assets->Models[AssetLoader::ModelId::FloorModel]->DrawWithInternalShader(m_blinn_phong_shdader, glm::mat4(1.0f));
 
     m_displayBuffer.Unbind();
 }
@@ -713,15 +542,7 @@ void Match::OnKeyPressed(GLFWwindow *window_ptr)
 
 void Match::ListenKeysPressed()
 {
-    if (!m_ui->m_show_settings)
-    {
-        m_player_red.ListenInput(PassRedInputs());
-        m_player_green.ListenInput(PassGreenInputs());
-    }
-    online_inputs[0].x = 0.0f;
-    online_inputs[0].y = 0.0f;
-    ReadOnlineEvents();
-    //CheckAndSendLastEventsToServer();
+    //PassAndProcessControls();
 }
 
 void Match::ProcessPendingNavigation()

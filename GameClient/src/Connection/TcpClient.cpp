@@ -2,8 +2,8 @@
 
 TcpClient::TcpClient(
     boost::asio::io_context& io,
-    SWSRSlidingWindow<GameSessionData>& game_sessions_window,
-    SWSRSlidingWindow<ErrorData>& error_messages
+    LockFreeQueue<GameSessionData>& game_sessions_window,
+    LockFreeQueue<ErrorData>& error_messages
 ) :
     m_io(io),
     m_game_sessions_window(game_sessions_window),

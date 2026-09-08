@@ -9,6 +9,7 @@
 #include "../UI/UI.hpp"
 #include "../Connection/Connection.hpp"
 #include "../Connection/ClientServerContract.hpp"
+#include "../Renderer/AssetLoader.hpp"
 
 #include <format>
 
@@ -20,11 +21,13 @@ protected:
     Framebuffer m_resolveBuffer; // for ms
     std::shared_ptr<UI> m_ui;
     std::shared_ptr<Connection> m_con;
+    std::shared_ptr<AssetLoader> m_assets;
 public:
     GameScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr,
         std::shared_ptr<Connection>& con,
+        std::shared_ptr<AssetLoader>& assets,
         int samples = 0
     );
 

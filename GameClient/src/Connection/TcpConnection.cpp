@@ -3,8 +3,8 @@
 TcpConnection::TcpConnection(
     boost::asio::io_context& io,
     tcp::resolver::results_type& endpoints,
-    SWSRSlidingWindow<GameSessionData>& game_sessions_window,
-    SWSRSlidingWindow<ErrorData>& error_messages
+    LockFreeQueue<GameSessionData>& game_sessions_window,
+    LockFreeQueue<ErrorData>& error_messages
 ):
     m_socket{io},
     m_game_sessions_window(game_sessions_window),
@@ -117,6 +117,9 @@ void TcpConnection::InterpretMessage()
         if (work_buf[2] == contract(Action::ListSessions) && work_buf[3] == contract(Action::Deliminator))
         {
             GameSessionData new_game_session_data{work_buf, work_len};
+            std::cout << std::format(
+                "{} {}\n", "Before Push To Event Window:", new_game_session_data.EncodeBuffer()
+            );
             m_game_sessions_window.Push(new_game_session_data);
             
             return;

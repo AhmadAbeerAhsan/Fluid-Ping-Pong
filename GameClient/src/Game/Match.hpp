@@ -11,6 +11,8 @@
 #include "LineXZ.hpp"
 #include <random>
 #include <chrono>
+#include <barrier>
+#include <thread>
 
 class Match : public GameScreen
 {
@@ -32,6 +34,9 @@ private:
         m_boundary_bottomleft_ptr, m_boundary_bottomright_ptr,
         m_boundary_topleft_ptr, m_boundary_topright_ptr;
 
+    std::jthread m_collision_thread{};
+    std::barrier<> m_barrier{2};
+
     //Game Objects
     std::shared_ptr<Camera> m_camera_ptr;
 
@@ -39,15 +44,11 @@ private:
 
     PointLight m_pointLight;
 
-    Texture m_cube_map_texture;
-
     Shader m_blinn_phong_shdader;
     Shader m_shadow_map_shdader;
     Shader m_screen_texture_shader;
-    Shader m_texture_cubemap_shdader;
 
     std::vector<std::shared_ptr<Model>> m_models{};
-    Model m_cube_skybox{};
     Model m_floor{};
 
     float m_ball_radius{2.0f};
@@ -71,6 +72,8 @@ private:
     void ProcessOnlinePlayerEvents(GameEventData& e);
     void ProcessRecievedBallEvents(GameEventData& e);
 
+    void PassAndProcessControls();
+
     //UI
     bool m_show_red_controls_settings{true};
     bool m_show_green_controls_settings{true};
@@ -93,7 +96,8 @@ public:
         std::shared_ptr<UI>& ui_ptr,
         std::shared_ptr<Connection>& con,
         MatchType match_type,
-        GameSessionData game_session_data
+        GameSessionData game_session_data,
+        std::shared_ptr<AssetLoader>& assets
     );
     ~Match() override;
 

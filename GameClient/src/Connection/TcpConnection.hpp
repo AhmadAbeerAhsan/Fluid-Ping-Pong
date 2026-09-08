@@ -5,7 +5,7 @@
 #include <memory>
 #include <iostream>
 #include <format>
-#include "SWSRSlidingWindow.hpp"
+#include "../Utilities/LockFreeQueue.hpp"
 
 using boost::asio::ip::tcp;
 
@@ -15,8 +15,8 @@ public:
     static std::shared_ptr<TcpConnection> Create(
         boost::asio::io_context& io,
         tcp::resolver::results_type& endpoints,
-        SWSRSlidingWindow<GameSessionData>& ui_events_raw,
-        SWSRSlidingWindow<ErrorData>& error_messages
+        LockFreeQueue<GameSessionData>& ui_events_raw,
+        LockFreeQueue<ErrorData>& error_messages
     )
     {
         return std::shared_ptr<TcpConnection>(new TcpConnection(
@@ -34,8 +34,8 @@ private:
     TcpConnection(
         boost::asio::io_context& io,
         tcp::resolver::results_type& endpoints,
-        SWSRSlidingWindow<GameSessionData>& game_sessions_window,
-        SWSRSlidingWindow<ErrorData>& error_messages
+        LockFreeQueue<GameSessionData>& game_sessions_window,
+        LockFreeQueue<ErrorData>& error_messages
     );
 
     tcp::socket m_socket;
@@ -44,8 +44,8 @@ private:
     size_t work_len;
     int m_possible_new_session_id;
 
-    SWSRSlidingWindow<GameSessionData>& m_game_sessions_window;
-    SWSRSlidingWindow<ErrorData>& m_error_messages;
+    LockFreeQueue<GameSessionData>& m_game_sessions_window;
+    LockFreeQueue<ErrorData>& m_error_messages;
     void StartRecieve();
     void HandleRecieve(const boost::system::error_code& ec, std::size_t len);
     void HandleDisconnect();

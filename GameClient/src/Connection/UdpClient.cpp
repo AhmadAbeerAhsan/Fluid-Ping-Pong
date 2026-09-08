@@ -2,8 +2,8 @@
 
 UdpClient::UdpClient(
     boost::asio::io_context& io,
-    SWSRSlidingWindow<GameEventData>& game_events,
-    SWSRSlidingWindow<ErrorData>& error_messages
+    LockFreeQueue<GameEventData>& game_events,
+    LockFreeQueue<ErrorData>& error_messages
 ) :
     m_socket(io),
     m_game_events(game_events),

@@ -9,6 +9,7 @@ add_library(
     PointLight.cpp
     Framebuffer.cpp
     AppWindow.cpp
+    AssetLoader.cpp
 )
 
 target_include_directories(Renderer PUBLIC
@@ -20,4 +21,5 @@ target_link_libraries(Renderer
     glad
     glfw
     glm
+    utility
 )

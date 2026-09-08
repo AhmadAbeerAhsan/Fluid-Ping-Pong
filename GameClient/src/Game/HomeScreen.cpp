@@ -38,67 +38,25 @@ void HomeScreen::InitScene()
     );
     m_camera_ptr->updatePersprectiveProj();
     //Create Textures
-    Texture wall_texture{"GameClient/assets/textures/tile.jpg"};
-    Texture floor_texture{"GameClient/assets/textures/base.png"};
-    Texture ball_texture{"GameClient/assets/textures/ball.png"};
-    std::vector<std::string> cubemap_paths{
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-        "GameClient/assets/textures/cube-space/blue_nebula.jpeg"
-    };
-    m_cube_map_texture = Texture{cubemap_paths};
-
+   
     std::cout << "Creating shader m_texture_cubemap_shader..." << std::endl;
-    m_texture_cubemap_shader = Shader{"GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl"};
-    std::cout << "m_texture_cubemap_shader id: " << *m_texture_cubemap_shader.ID << std::endl;
-    m_texture_cubemap_shader.PassUniforms = std::function<void()>{
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].PassUniforms = std::function<void()>{
         [this](){
-            m_texture_cubemap_shader.setMat4("view", m_camera_ptr->skyboxView);
-            m_texture_cubemap_shader.setMat4("projection", m_camera_ptr->proj);
+            m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].setMat4("view", m_camera_ptr->skyboxView);
+            m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].setMat4("projection", m_camera_ptr->proj);
         }
     };
 
-    std::vector<glm::vec3> m_positions {};
-    std::vector<glm::vec3> m_colors {};
-    std::vector<glm::uvec3> m_indices {};
-    std::vector<glm::vec2> m_tex_coords {};
-
-    std::cout << "Generating cube map" << std::endl;
-    m_positions.clear();
-    m_colors.clear();
-    m_indices.clear();
-    m_tex_coords.clear();
-    GenerateSkyboxCube(m_positions, m_tex_coords, m_indices);
-    m_cube_skybox.SetGeometry(m_positions, m_indices, false);
-    m_cube_skybox.SetMaterial(m_cube_map_texture, m_tex_coords);
-    m_cube_skybox.SetShader(m_texture_cubemap_shader);
-    m_cube_skybox.initializeForGL();
 }
 
 HomeScreen::HomeScreen(
     std::shared_ptr<glm::ivec2> &shared_resolution,
     std::shared_ptr<UI> &ui_ptr,
     std::shared_ptr<Connection> &con,
-    std::string texture_path) : GameScreen(shared_resolution, ui_ptr, con),
-                                m_texture(texture_path.c_str())
+    std::shared_ptr<AssetLoader>& assets) : 
+    GameScreen(shared_resolution, ui_ptr, con, assets)
 {
-    std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
-    m_screen_texture_shader = Shader{"GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl"};
-    std::cout << "m_screen_texture_shader id: " << *m_screen_texture_shader.ID << std::endl;
 
-    std::vector<glm::vec3> m_positions {};
-    std::vector<glm::vec3> m_colors {};
-    std::vector<glm::uvec3> m_indices {};
-    std::vector<glm::vec2> m_tex_coords {};
-    GenerateFullscreenQuad(m_positions, m_tex_coords, m_indices);
-    fullscreen_quad.SetGeometry(m_positions, m_indices);
-    fullscreen_quad.SetMaterial(m_texture, m_tex_coords);
-    fullscreen_quad.SetShader(m_screen_texture_shader);
-    fullscreen_quad.initializeForGL();
-    fullscreen_quad.UpdateModelMatrix();
 
     InitScene();
 }
@@ -315,9 +273,11 @@ void HomeScreen::DrawScene()
     m_displayBuffer.Bind();
 
     glDisable(GL_DEPTH_TEST);
-    m_texture_cubemap_shader.Activate();
-    m_texture_cubemap_shader.PassUniforms();
-    m_cube_skybox.DrawWithExternalShader(m_texture_cubemap_shader);
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].Activate();
+    m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].PassUniforms();
+    m_assets->Models[AssetLoader::ModelId::CubeMapModel]->DrawWithInternalShader(
+        m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader]
+    );
     glEnable(GL_DEPTH_TEST);
 
     m_displayBuffer.Unbind();
@@ -343,7 +303,7 @@ void HomeScreen::ListenKeysPressed()
     while (m_con->game_sessions.Read(new_game_session_data))
     {
         std::cout << std::format(
-            "{} {}\n", "Read From Window:", new_game_session_data.EncodeBuffer()
+            "{} {}\n", "Read From Session Window:", new_game_session_data.EncodeBuffer()
         );
         game_sessions.push_back(new_game_session_data);
     }
@@ -352,7 +312,7 @@ void HomeScreen::ListenKeysPressed()
     while (m_con->game_events.Read(new_game_event_data))
     {
         std::cout << std::format(
-            "{} {}\n", "Read From Window:", new_game_event_data.EncodeBuffer()
+            "{} {}\n", "Read From Event Window:", new_game_event_data.EncodeBuffer()
         );
         std::cout << std::format(
             "MatchId: {}, JoiningId:{}\n", new_game_event_data.m_match_id, joining_session.MatchId()
@@ -372,7 +332,6 @@ void HomeScreen::ListenKeysPressed()
                 m_ui->m_match_requested = true;
             } 
         }
-        
     }
 
     ErrorData e;

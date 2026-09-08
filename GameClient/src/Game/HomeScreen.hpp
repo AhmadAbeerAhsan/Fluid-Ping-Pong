@@ -6,13 +6,14 @@
 #include "../Renderer/Texture.hpp"
 #include "../Renderer/Model.hpp"
 #include "../Renderer/Shader.hpp"
+#include "../Utilities/LockFreeQueue.hpp"
+
+using Task = std::function<void()>;
 
 class HomeScreen : public GameScreen
 {
 private:
-    Texture m_texture;
-    Shader m_screen_texture_shader;
-    Model fullscreen_quad {};
+    Model EmptyModel{};
     
     char m_player_name[32] = "";
     char m_match_name[32] = "";
@@ -27,16 +28,13 @@ private:
 
     void InitScene();
     std::shared_ptr<Camera> m_camera_ptr;
-    Texture m_cube_map_texture;
-    Shader m_texture_cubemap_shader;
-    Model m_cube_skybox{};
-    
+
 public:
     HomeScreen(
         std::shared_ptr<glm::ivec2>& shared_resolution,
         std::shared_ptr<UI>& ui_ptr,
         std::shared_ptr<Connection>& con,
-        std::string texture_path
+        std::shared_ptr<AssetLoader>& assets
     );
     ~HomeScreen() override;
 

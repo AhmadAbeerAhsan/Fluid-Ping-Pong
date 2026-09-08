@@ -1,6 +1,16 @@
 #include "Shader.hpp"
 
-Shader::Shader(const char *vertexPath, const char *fragmentPath)
+Shader::Shader()
+{
+    ID = std::shared_ptr<GLuint>(new GLuint(glCreateProgram()), [](GLuint* id){
+            std::cout << "glDeleteProgram(*id): " << *id << std::endl;
+            glDeleteProgram(*id);
+            delete id;
+        }
+    );
+}
+
+void Shader::Load(const char *vertexPath, const char *fragmentPath)
 {
     auto cwd = std::filesystem::current_path();
     std::cout << "Working directory: " << cwd << "\n";
@@ -43,25 +53,26 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath)
         fShaderFile.close();
 
         // convertstreamintostring
-        vertexCode = vShaderStream.str();
-        fragmentCode = fShaderStream.str();
+        m_vShaderCode = vShaderStream.str();   // copies into the member directly — no dangling
+        m_fShaderCode = fShaderStream.str();
     }
     catch (std::ifstream::failure)
     {
         std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
     }
+}
 
-    const char *vShaderCode = vertexCode.c_str();
-    const char *fShaderCode = fragmentCode.c_str();
-
+void Shader::GLCompleteShader()
+{
     // 2.compileshaders
     unsigned int vertex, fragment;
     int success;
     char infoLog[512];
 
     // vertexShader
+    const char* vSrc = m_vShaderCode.c_str();
     vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vShaderCode, NULL);
+    glShaderSource(vertex, 1, &vSrc, NULL);
     glCompileShader(vertex);
 
     // print compile errors if any
@@ -74,8 +85,9 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath)
     };
 
     // fragmentShader
+    const char* fSrc = m_fShaderCode.c_str();
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &fShaderCode, NULL);
+    glShaderSource(fragment, 1, &fSrc, NULL);
     glCompileShader(fragment);
 
     // print compile errors if any
@@ -87,12 +99,6 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath)
                   << infoLog << std::endl;
     };
 
-    ID = std::shared_ptr<GLuint>(new GLuint(glCreateProgram()), [](GLuint* id){
-            std::cout << "glDeleteProgram(*id): " << *id << std::endl;
-            glDeleteProgram(*id);
-            delete id;
-        }
-    );
     glAttachShader(*ID, vertex);
     glAttachShader(*ID, fragment);
     glLinkProgram(*ID);

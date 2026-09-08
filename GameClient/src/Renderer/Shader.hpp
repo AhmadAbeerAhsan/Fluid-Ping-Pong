@@ -18,13 +18,15 @@ class Shader
 public:
     std::shared_ptr<GLuint> ID;
 
-    Shader(const char* vertexPath, const char* fragmentPath);
-    Shader() = default;
+    Shader();
     Shader(const Shader&) = default;
     Shader& operator=(const Shader&) = default;
 
+    void Load(const char* vertexPath, const char* fragmentPath);
+    void GLCompleteShader();
+
     void Activate();
-    std::function<void()> PassUniforms;
+    std::function<void()> PassUniforms{[](){}};
 
     // utility uniform functions
     void setBool(const std::string &name, bool value) const;
@@ -45,4 +47,7 @@ private:
 
     int attributeId{0};
     int uniformId{0};
+
+    std::string m_vShaderCode;
+    std::string m_fShaderCode;
 };

@@ -6,7 +6,7 @@
 
 #include "ClientServerContract.hpp"
 #include "TcpConnection.hpp"
-#include "SWSRSlidingWindow.hpp"
+#include "../Utilities/LockFreeQueue.hpp"
 
 using boost::asio::ip::tcp;
 
@@ -15,13 +15,13 @@ class TcpClient
 private:
     boost::asio::io_context& m_io;
     tcp::resolver::results_type m_endpoints;
-    SWSRSlidingWindow<GameSessionData>& m_game_sessions_window;
-    SWSRSlidingWindow<ErrorData>& m_error_messages;
+    LockFreeQueue<GameSessionData>& m_game_sessions_window;
+    LockFreeQueue<ErrorData>& m_error_messages;
 public:
     TcpClient(
         boost::asio::io_context& io,
-        SWSRSlidingWindow<GameSessionData>& game_sessions_window,
-        SWSRSlidingWindow<ErrorData>& error_messages
+        LockFreeQueue<GameSessionData>& game_sessions_window,
+        LockFreeQueue<ErrorData>& error_messages
     );
     ~TcpClient();
 

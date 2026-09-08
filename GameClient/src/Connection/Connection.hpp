@@ -2,8 +2,9 @@
 
 #include "UdpClient.hpp"
 #include "TcpClient.hpp"
-#include "SWSRSlidingWindow.hpp"
+#include "LockFreeQueue.hpp"
 #include "GameEvent.hpp"
+#include "../Utilities/LockFreeQueue.hpp"
 
 class Connection
 {
@@ -17,7 +18,7 @@ public:
     UdpClient udpC;
     TcpClient tcpC;
 
-    SWSRSlidingWindow<GameEventData> game_events{};
-    SWSRSlidingWindow<GameSessionData> game_sessions{};
-    SWSRSlidingWindow<ErrorData> error_messages{};
+    LockFreeQueue<GameEventData> game_events{};
+    LockFreeQueue<GameSessionData> game_sessions{};
+    LockFreeQueue<ErrorData> error_messages{};
 };

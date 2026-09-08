@@ -60,7 +60,6 @@ public:
     //Model& operator=(const Model&) = delete;
     Model(Model&&) = default;
 
-    void SetShader(Shader shader_ptr);
     void SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices, bool is_circle = false);
     void SetMaterial(Texture texture, std::vector<glm::vec2> texCoords);
     void SetMaterial(std::vector<glm::vec2> texCoords);
@@ -89,7 +88,6 @@ public:
     std::vector<glm::vec3> m_colors {};
     std::vector<glm::uvec3> m_indices {};
 
-    Shader m_shader;
     glm::vec3 m_model_positions;
     glm::vec3 m_model_rotations;
     glm::vec3 m_model_scales;
@@ -113,12 +111,13 @@ public:
     glm::vec2 m_dir{0.0f, 1.0f};
 
     void initializeForGL();
-    void DrawWithExternalShader(Shader shader, const glm::mat4& parent_model = glm::mat4(1.0f));
-    void DrawWithInternalShader(const glm::mat4& parent_model = glm::mat4(1.0f));
+    void DrawWithExternalShader(Shader &shader, const glm::mat4& parent_model = glm::mat4(1.0f));
+    void DrawWithInternalShader(Shader &shader, const glm::mat4& parent_model = glm::mat4(1.0f));
 
 private:
     bool m_use_indices{false};
 
     void ComputeNormals(bool is_circle);
+    void PassInternalShaderUniform(Shader& shader);
 
 };

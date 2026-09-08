@@ -10,11 +10,14 @@ add_library(connection
     TcpClient.cpp
     UdpClient.cpp
     TcpConnection.cpp
-    SWSRSlidingWindow.cpp
 )
 
 target_include_directories(connection PUBLIC
     "D:/boost_1_91_0"
+)
+
+target_link_libraries(connection
+    utility
 )
 
 target_include_directories(connection PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

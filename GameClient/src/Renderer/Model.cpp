@@ -14,11 +14,6 @@ Model::Model() :
     vbo_indices.reset(new GLuint(0));
 }
 
-void Model::SetShader(Shader shader)
-{
-    m_shader = shader;
-}
-
 void Model::SetMaterial(std::vector<glm::vec3> colors)
 {
     m_useColor = true;
@@ -153,6 +148,15 @@ void Model::ComputeNormals(bool is_circle)
             }
         }
     }
+}
+
+void Model::PassInternalShaderUniform(Shader &shader)
+{
+    shader.setMat4("model", m_temp_model);
+    shader.setBool("send_time", m_send_time);
+    shader.setFloat("time", m_time);
+    shader.setBool("enableReflection", m_enable_reflection);
+    shader.setBool("useColor", m_useColor);
 }
 
 void Model::SetGeometry(const std::vector<glm::vec3>& positions, const std::vector<glm::uvec3>& indices, bool is_circle)
@@ -329,16 +333,12 @@ void Model::initializeForGL()
     glBindVertexArray(0); // unbind, we'll bind again in the render loop
 }
 
-void Model::DrawWithInternalShader(const glm::mat4& parent_model){
+void Model::DrawWithInternalShader(Shader &shader, const glm::mat4& parent_model){
     m_texture.Use(GL_TEXTURE0);
 
     m_temp_model = parent_model * m_model;
     
-    m_shader.setMat4("model", m_temp_model);
-    m_shader.setBool("send_time", m_send_time);
-    m_shader.setFloat("time", m_time);
-    m_shader.setBool("enableReflection", m_enable_reflection);
-    m_shader.setBool("useColor", m_useColor);
+    PassInternalShaderUniform(shader);
 
     glBindVertexArray(*vao_id.get());
     if (m_use_indices)
@@ -350,11 +350,11 @@ void Model::DrawWithInternalShader(const glm::mat4& parent_model){
 
     for (std::shared_ptr<Model>& child : Children)
     {
-        child->DrawWithInternalShader(m_temp_model);
+        child->DrawWithInternalShader(shader, m_temp_model);
     }
 };
 
-void Model::DrawWithExternalShader(Shader shader, const glm::mat4& parent_model)
+void Model::DrawWithExternalShader(Shader &shader, const glm::mat4& parent_model)
 {
     m_texture.Use(GL_TEXTURE0);
 

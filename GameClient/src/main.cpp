@@ -8,6 +8,7 @@
 #include "Renderer/Texture.hpp"
 #include "Renderer/Camera.hpp"
 #include "Renderer/AppWindow.hpp"
+#include "Renderer/AssetLoader.hpp"
 
 #include "Game/Match.hpp"
 #include "Game/HomeScreen.hpp"
@@ -28,12 +29,12 @@ int main()
 
     AppWindow appWindow{shared_resolution};
     std::shared_ptr<UI> ui_ptr{std::make_shared<UI>(appWindow.GetWindowPtr())};
-
+    std::shared_ptr<AssetLoader> assets{std::make_shared<AssetLoader>()};
     std::shared_ptr<GameScreen> screen{std::make_shared<HomeScreen>(
         shared_resolution,
         ui_ptr,
         con,
-        "GameClient/assets/textures/base.png"
+        assets
     )};
         
     appWindow.UpdateResolutionSubscibedCallback = std::function<void()>{
@@ -52,30 +53,19 @@ int main()
         }
     };
 
-    screen.reset(new Match(
-        Controller::ControllerType::Keyboard1,
-        Controller::ControllerType::Bot,
-        shared_resolution,
-        ui_ptr,
-        con,
-        Match::MatchType::Offline,
-        GameSessionData()
-    ));
-
-    
     ui_ptr->Navigate_To_HomeScreen = std::function<void()>{
-        [&screen, &shared_resolution, &ui_ptr, &con](){
+        [&screen, &shared_resolution, &ui_ptr, &con, &assets](){
             screen.reset(new HomeScreen(
                 shared_resolution,
                 ui_ptr,
                 con,
-                "GameClient/assets/textures/base.png"
+                assets
             ));
         }
     };
 
     ui_ptr->Navigate_To_Match = std::function<void(int, int, int, GameSessionData)>{
-        [&screen, &shared_resolution, &ui_ptr, &con](
+        [&screen, &shared_resolution, &ui_ptr, &con, &assets](
             int c1,
             int c2,
             int match_type,
@@ -88,14 +78,17 @@ int main()
                 ui_ptr,
                 con,
                 static_cast<Match::MatchType>(match_type),
-                g
+                g,
+                assets
             ));
         }
     };
 
     std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
-    Shader m_screen_texture_shader = Shader{"GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl"};
+    Shader m_screen_texture_shader = Shader{};
     std::cout << "m_screen_texture_shader id: " << *m_screen_texture_shader.ID << std::endl;
+    m_screen_texture_shader.Load("GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl");
+    m_screen_texture_shader.GLCompleteShader();
 
     std::vector<glm::vec3> m_positions {};
     std::vector<glm::vec3> m_colors {};
@@ -105,7 +98,6 @@ int main()
     Model fullscreen_quad {};
     fullscreen_quad.SetGeometry(m_positions, m_indices);
     fullscreen_quad.SetMaterial(m_tex_coords);
-    fullscreen_quad.SetShader(m_screen_texture_shader);
     fullscreen_quad.initializeForGL();
     fullscreen_quad.UpdateModelMatrix();
 
@@ -136,6 +128,7 @@ int main()
             appWindow.RecordEvents();
 
             screen->ProcessPendingNavigation();
+            assets->CompleteLoad();
         }
     }
     catch(const std::exception& e)

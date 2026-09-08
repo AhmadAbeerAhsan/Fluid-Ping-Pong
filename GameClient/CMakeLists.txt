@@ -2,6 +2,7 @@ add_subdirectory(src/UI)
 add_subdirectory(src/Renderer)
 add_subdirectory(src/Game)
 add_subdirectory(src/Connection)
+add_subdirectory(src/Utilities)
 
 add_executable(
     GameClient
@@ -21,6 +22,7 @@ target_link_libraries(GameClient
     Renderer
     Game
     connection
+    utility
 )
 
 # Linux extra OpenGL libraries

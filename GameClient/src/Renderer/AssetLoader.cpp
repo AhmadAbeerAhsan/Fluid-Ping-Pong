@@ -1,18 +1,41 @@
 #include "AssetLoader.hpp"
 
+std::string AssetLoader::GetFullExecutablePath(std::string extension)
+{
+    wchar_t buffer[MAX_PATH];
+
+    DWORD length = GetModuleFileNameW(
+        nullptr,
+        buffer,
+        MAX_PATH
+    );
+
+    if (length == 0)
+        throw std::runtime_error("Failed to get executable path");
+
+    return std::filesystem::path(buffer).parent_path().string() + extension;
+}
+
 AssetLoader::AssetLoader(/* args */)
 {
+    m_asset_path = GetFullExecutablePath("/assets/");
+    m_shader_path = GetFullExecutablePath("/Shaders/");
+
+    std::cout << "m_screen_texture_shader id: " << *Shaders[ShaderId::ScreenShader].ID << std::endl;
+    Shaders[ShaderId::ScreenShader].Load(m_shader_path + "screen_texture.vs.glsl", m_shader_path + "screen_texture.fs.glsl");
+    Shaders[ShaderId::ScreenShader].GLCompleteShader();
+
     thread_ptr = std::make_unique<std::jthread>(
         [this](){
             std::cout << "Worker Spawned\n";
 
             std::vector<std::string> cubemap_paths{
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg",
-                "GameClient/assets/textures/cube-space/blue_nebula.jpeg"
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg",
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg",
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg",
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg",
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg",
+                m_asset_path + "textures/cube-space/blue_nebula.jpeg"
             };
             Textures[TextureId::CubeMapTexture] = Texture{Texture::TextureType::ThreeD};
             Textures[TextureId::CubeMapTexture].Load3DTexture(cubemap_paths);
@@ -35,7 +58,7 @@ AssetLoader::AssetLoader(/* args */)
             );
 
             std::cout << "Creating shader m_texture_cubemap_shader..." << std::endl;
-            Shaders[ShaderId::CubeMapShader].Load("GameClient/src/Renderer/Shaders/texture_cubemap.vs.glsl", "GameClient/src/Renderer/Shaders/texture_cubemap.fs.glsl");
+            Shaders[ShaderId::CubeMapShader].Load(m_shader_path + "texture_cubemap.vs.glsl", m_shader_path + "texture_cubemap.fs.glsl");
             Task CubeMapShaderLoaded{[this](){
                 Shaders[ShaderId::CubeMapShader].GLCompleteShader();
             }};
@@ -44,7 +67,7 @@ AssetLoader::AssetLoader(/* args */)
             );
 
             Textures[TextureId::WallTexture] = Texture{Texture::TextureType::TwoD};
-            Textures[TextureId::WallTexture].Load2DTexture("GameClient/assets/textures/tile.jpg");
+            Textures[TextureId::WallTexture].Load2DTexture(m_asset_path + "textures/tile.jpg");
             Task WallTextureLoaded{[this]() mutable {
                 Textures[TextureId::WallTexture].GLCompleteTexture();
 
@@ -173,7 +196,7 @@ AssetLoader::AssetLoader(/* args */)
             );
 
             Textures[TextureId::FloorTexture] = Texture{Texture::TextureType::TwoD};
-            Textures[TextureId::FloorTexture].Load2DTexture("GameClient/assets/textures/base.png");
+            Textures[TextureId::FloorTexture].Load2DTexture(m_asset_path + "textures/base.png");
             Task FloorTextureLoaded{[this]() mutable {
                 Textures[TextureId::FloorTexture].GLCompleteTexture();
 
@@ -199,7 +222,7 @@ AssetLoader::AssetLoader(/* args */)
             );
 
             Textures[TextureId::SphereTexture] = Texture{Texture::TextureType::TwoD};
-            Textures[TextureId::SphereTexture].Load2DTexture("GameClient/assets/textures/ball.png");
+            Textures[TextureId::SphereTexture].Load2DTexture(m_asset_path + "textures/ball.png");
             Task SphereTextureLoaded{[this]() mutable {
                 Textures[TextureId::SphereTexture].GLCompleteTexture();
 
@@ -222,9 +245,33 @@ AssetLoader::AssetLoader(/* args */)
                 SphereTextureLoaded
             );
 
+            std::cout << "Shaders[ShaderId::BlinnPhongShader] id: " << *Shaders[ShaderId::BlinnPhongShader].ID << std::endl;
+            Shaders[ShaderId::BlinnPhongShader].Load(m_shader_path + "blinn_phong.vs.glsl", m_shader_path + "blinn_phong.fs.glsl");
+            Task BlinnPhongShaderLoaded{[this](){
+                Shaders[ShaderId::BlinnPhongShader].GLCompleteShader();
+                Shaders[ShaderId::BlinnPhongShader].Activate();
+                Shaders[ShaderId::BlinnPhongShader].setInt("ourTexture", 0);
+                Shaders[ShaderId::BlinnPhongShader].setInt("shTex", 1);
+                Shaders[ShaderId::BlinnPhongShader].setInt("skybox", 2);
+                Shaders[ShaderId::BlinnPhongShader].setInt("scene", 3);
+            }};
+            AssetLoaderQueue.Push(
+                BlinnPhongShaderLoaded
+            );
+
+            std::cout << "m_shadow_map_shdader id: " << *Shaders[ShaderId::ShadowMapShader].ID << std::endl;
+            Shaders[ShaderId::ShadowMapShader].Load(m_shader_path + "shadow_map.vs.glsl", m_shader_path + "shadow_map.fs.glsl");
+            std::cout << "Creating shader m_texture_cubemap_shdader..." << std::endl;
+            Task ShadowMapShaderLoaded{[this](){
+                Shaders[ShaderId::ShadowMapShader].GLCompleteShader();
+            }};
+            AssetLoaderQueue.Push(
+                ShadowMapShaderLoaded
+            );
 
             Task SetAllAssetsLoaded{[this](){
                 m_all_assets_loaded = true;
+                thread_ptr->join();
             }};
             AssetLoaderQueue.Push(
                 SetAllAssetsLoaded

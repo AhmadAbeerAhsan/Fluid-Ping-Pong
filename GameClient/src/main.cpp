@@ -1,22 +1,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 
-#include "Renderer/Renderer.hpp"
-#include "Renderer/Model.hpp"
-#include "Renderer/Shader.hpp"
-#include "Renderer/PointLight.hpp"
-#include "Renderer/Framebuffer.hpp"
-#include "Renderer/Texture.hpp"
-#include "Renderer/Camera.hpp"
 #include "Renderer/AppWindow.hpp"
 #include "Renderer/AssetLoader.hpp"
-
 #include "Game/Match.hpp"
 #include "Game/HomeScreen.hpp"
-
 #include "UI/UI.hpp"
-
-#include <chrono>
-
 #include "Connection/Connection.cpp"
 
 int main()
@@ -84,12 +72,6 @@ int main()
         }
     };
 
-    std::cout << "Creating shader m_screen_texture_shader..." << std::endl;
-    Shader m_screen_texture_shader = Shader{};
-    std::cout << "m_screen_texture_shader id: " << *m_screen_texture_shader.ID << std::endl;
-    m_screen_texture_shader.Load("GameClient/src/Renderer/Shaders/screen_texture.vs.glsl", "GameClient/src/Renderer/Shaders/screen_texture.fs.glsl");
-    m_screen_texture_shader.GLCompleteShader();
-
     std::vector<glm::vec3> m_positions {};
     std::vector<glm::vec3> m_colors {};
     std::vector<glm::uvec3> m_indices {};
@@ -106,21 +88,15 @@ int main()
     {
         while (!appWindow.shouldClose())
         {
-            //models.back().m_time = std::chrono::duration<float, std::milli>(end - start).count()/10000.0f;
-
-            //start = std::chrono::high_resolution_clock::now();
             appWindow.ProcessEvents();
             screen->ListenKeysPressed();
-
-            //ui_ptr->SetupUI();
-            //ui_ptr->CraftUI();
 
             screen->SetupUI();
             screen->DrawScene();
             
-            m_screen_texture_shader.Activate();
+            assets->Shaders[AssetLoader::ShaderId::ScreenShader].Activate();
             screen->UseScenceAsTexture();
-            fullscreen_quad.DrawWithExternalShader(m_screen_texture_shader);
+            fullscreen_quad.DrawWithExternalShader(assets->Shaders[AssetLoader::ShaderId::ScreenShader]);
             screen->ClearScene();
 
             ui_ptr->RenderUI();

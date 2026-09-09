@@ -10,7 +10,7 @@ Shader::Shader()
     );
 }
 
-void Shader::Load(const char *vertexPath, const char *fragmentPath)
+void Shader::Load(std::string vertexPath, std::string fragmentPath)
 {
     auto cwd = std::filesystem::current_path();
     std::cout << "Working directory: " << cwd << "\n";
@@ -22,7 +22,7 @@ void Shader::Load(const char *vertexPath, const char *fragmentPath)
     std::cout << "Opening shader..." << "\n";
 
     // openfiles
-    std::ifstream vShaderFile(vertexPath);
+    std::ifstream vShaderFile(vertexPath.c_str());
     std::cout << "Opening vertex shader" << "\n";
     if (!vShaderFile)
     {
@@ -31,7 +31,7 @@ void Shader::Load(const char *vertexPath, const char *fragmentPath)
     }
 
     std::cout << "Opening fragment shader" << "\n";
-    std::ifstream fShaderFile(fragmentPath);
+    std::ifstream fShaderFile(fragmentPath.c_str());
     if (!fShaderFile)
     {
         std::cout << "Error: could not open input file fragment shader" << "\n";

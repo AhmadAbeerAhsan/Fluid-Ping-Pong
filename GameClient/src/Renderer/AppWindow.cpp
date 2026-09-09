@@ -76,6 +76,11 @@ void AppWindow::onFramebufferResize(int _screen_width, int _screen_height)
     m_shared_resolution->y = _screen_height;
     glViewport(0, 0, m_shared_resolution->x, m_shared_resolution->y);
 
+    if (m_shared_resolution->y == 0 || m_shared_resolution->x == 0)
+    {
+        return;
+    }
+    
     UpdateResolutionSubscibedCallback();
 
 }

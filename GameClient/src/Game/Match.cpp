@@ -174,34 +174,17 @@ void Match::InitScene()
     m_camera_ptr->updatePersprectiveProj();
     //Create Textures
 
-    std::cout << "Creating shader m_blinn_phong_shdader..." << std::endl;
-    m_blinn_phong_shdader = Shader{};
-    std::cout << "m_blinn_phong_shdader id: " << *m_blinn_phong_shdader.ID << std::endl;
-    m_blinn_phong_shdader.Load("GameClient/src/Renderer/Shaders/blinn_phong.vs.glsl", "GameClient/src/Renderer/Shaders/blinn_phong.fs.glsl");
-    m_blinn_phong_shdader.GLCompleteShader();
-    m_blinn_phong_shdader.Activate();
-    m_blinn_phong_shdader.setInt("ourTexture", 0);
-    m_blinn_phong_shdader.setInt("shTex", 1);
-    m_blinn_phong_shdader.setInt("skybox", 2);
-    m_blinn_phong_shdader.setInt("scene", 3);
-    m_blinn_phong_shdader.PassUniforms = std::function<void()>{
+    m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].PassUniforms = std::function<void()>{
         [this](){
-            m_blinn_phong_shdader.setMat4("view", m_camera_ptr->view);
-            m_blinn_phong_shdader.setMat4("projection", m_camera_ptr->proj);
-            m_blinn_phong_shdader.setVec3("cameraPosition", m_camera_ptr->position);
-            m_blinn_phong_shdader.setVec2("resolution", {(float)m_shared_resolution->x, (float)m_shared_resolution->y});
+            m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].setMat4("view", m_camera_ptr->view);
+            m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].setMat4("projection", m_camera_ptr->proj);
+            m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].setVec3("cameraPosition", m_camera_ptr->position);
+            m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].setVec2("resolution", {(float)m_shared_resolution->x, (float)m_shared_resolution->y});
             m_pointLight.PassUniformsToRendererShader();
             m_pointLight.EnableShadowTexture();
             m_assets->Textures[AssetLoader::TextureId::CubeMapTexture].Use(GL_TEXTURE2);
         }
     };
-
-    std::cout << "Creating shader m_shadow_map_shdader..." << std::endl;
-    m_shadow_map_shdader = Shader{};
-    std::cout << "m_shadow_map_shdader id: " << *m_shadow_map_shdader.ID << std::endl;
-    m_shadow_map_shdader.Load("GameClient/src/Renderer/Shaders/shadow_map.vs.glsl", "GameClient/src/Renderer/Shaders/shadow_map.fs.glsl");
-    std::cout << "Creating shader m_texture_cubemap_shdader..." << std::endl;
-    m_shadow_map_shdader.GLCompleteShader();
     
     m_assets->Shaders[AssetLoader::ShaderId::CubeMapShader].PassUniforms = std::function<void()>{
         [this](){
@@ -210,8 +193,8 @@ void Match::InitScene()
         }
     };
 
-    m_pointLight.SetRenderShader(m_blinn_phong_shdader);
-    m_pointLight.SetShadowMapShader(m_shadow_map_shdader);
+    m_pointLight.SetRenderShader(m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader]);
+    m_pointLight.SetShadowMapShader(m_assets->Shaders[AssetLoader::ShaderId::ShadowMapShader]);
 
     m_red_spawn_points = std::vector<glm::vec2>{
         glm::vec2(width/4.0f, lenght/4.0f),
@@ -286,7 +269,7 @@ void Match::InitScene()
     m_boundary_green_player_ptr->AssignModel(handle_green);
     m_player_green.AssignBoundary(m_boundary_green_player_ptr);
 
-    m_boundary_ball_ptr = std::make_shared<BoundaryCircle>(m_ball_radius, 0.0f, ball_mass);
+    m_boundary_ball_ptr = std::make_shared<BoundaryCircle>(m_assets->m_ball_radius, 0.0f, ball_mass);
     m_boundary_ball_ptr->AssignModel(m_assets->Models[AssetLoader::ModelId::SphereModel]);
 
     m_boundary_left_ptr = std::make_shared<BoundaryLine>(
@@ -498,16 +481,16 @@ void Match::DrawScene()
     );
     glEnable(GL_DEPTH_TEST);
 
-    m_blinn_phong_shdader.Activate();
-    m_blinn_phong_shdader.PassUniforms();
+    m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].Activate();
+    m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader].PassUniforms();
     for (std::shared_ptr<Model>& model : m_models)
     {
-        model->DrawWithInternalShader(m_blinn_phong_shdader);
+        model->DrawWithInternalShader(m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader]);
     }
     for(int i = AssetLoader::ModelId::RightBorder; i <= AssetLoader::ModelId::SphereModel; i++)
     {
         m_assets->Models[i]->DrawWithInternalShader(
-            m_blinn_phong_shdader
+            m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader]
         );
     }
     m_snapshotBuffer.CopyFrom(m_displayBuffer);
@@ -515,7 +498,7 @@ void Match::DrawScene()
     //blinn_phong_shdader_ptr->setInt("skybox", 2);
     //blinn_phong_shdader_ptr->setInt("scene", 3);
     m_snapshotBuffer.BindTexture(GL_TEXTURE3);
-    m_assets->Models[AssetLoader::ModelId::FloorModel]->DrawWithInternalShader(m_blinn_phong_shdader, glm::mat4(1.0f));
+    m_assets->Models[AssetLoader::ModelId::FloorModel]->DrawWithInternalShader(m_assets->Shaders[AssetLoader::ShaderId::BlinnPhongShader], glm::mat4(1.0f));
 
     m_displayBuffer.Unbind();
 }
@@ -580,12 +563,12 @@ void Match::SetupUI()
             float height{m_camera_ptr->GHeight()};
             float distance{m_camera_ptr->GRadius()};
             float angle{m_camera_ptr->GAngle()};
-            if (UIWidgets::Slider("   Height", &height, 10.0f, 200.0f, 1.5f, 200.0f))
+            if (UIWidgets::Slider("   Height", &height, 20.0f, 200.0f, 1.5f, 200.0f))
             {
                 m_camera_ptr->SetGHeight(height);
             }
             ImGui::Spacing();
-            if (UIWidgets::Slider("   Distance", &distance, 10.0f, 200.0f, 1.5f, 200.0f))
+            if (UIWidgets::Slider("   Distance", &distance, 20.0f, 200.0f, 1.5f, 200.0f))
             {
                 m_camera_ptr->SetGRadius(distance);
             }
@@ -638,7 +621,7 @@ void Match::SetupUI()
             ImGui::SetNextItemOpen(m_show_red_controls_settings);
             m_show_red_controls_settings = ImGui::CollapsingHeader("Player Red Control Settings##redctrl");
         }
-        if (m_show_red_controls_settings)
+        if (m_show_red_controls_settings && m_player_red.GetControllerType() != Controller::ControllerType::Bot && m_player_red.GetControllerType() != Controller::ControllerType::Online)
         {
             ImGui::Indent();
             UIWidgets::Label(m_ui->CreateDirectionString(true).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
@@ -666,7 +649,7 @@ void Match::SetupUI()
             ImGui::SetNextItemOpen(m_show_green_controls_settings);
             m_show_green_controls_settings = ImGui::CollapsingHeader("Player Green Control Settings##greenctrl");
         }
-        if (m_show_green_controls_settings)
+        if (m_show_green_controls_settings && m_player_green.GetControllerType() != Controller::ControllerType::Bot && m_player_green.GetControllerType() != Controller::ControllerType::Online)
         {
             ImGui::Indent();
             UIWidgets::Label(m_ui->CreateDirectionString(false).c_str(), 1.5f, UIWidgets::HorizontalLayout::Left);
@@ -939,15 +922,6 @@ void Match::InitializePassInputs()
             if (pos.x > max_mouse_pos.x || pos.y > max_mouse_pos.y || pos.x < min_mouse_pos.x || pos.y < min_mouse_pos.y)
                 pos = glm::vec2{1000.0f, 1000.0f};
 
-            if (ImGui::IsKeyDown(ImGuiKey_Z))
-            {
-                std::cout << "t: " << t << std::endl;
-                std::cout << "Cam: " << m_camera_ptr->position.x << "," << m_camera_ptr->position.y << "," << m_camera_ptr->position.z << std::endl;
-                std::cout << "Dir: " << ray_wor.x << "," << ray_wor.y << "," << ray_wor.z << std::endl;
-                std::cout << "Mous: " << mouse.x << "," << mouse.y << std::endl;
-                std::cout << "Ndc: " << ndc.x << "," << ndc.y << std::endl;
-                std::cout << "Pos: " << pos.x << "," << pos.y << std::endl;
-            }
             return std::vector<glm::vec2>{pos};
         }
     };
@@ -1024,7 +998,7 @@ void Match::InitializePassInputs()
             glm::vec2 handle_to_ball = m_boundary_ball_ptr->Origin() - m_boundary_green_player_ptr->Origin();
             if(glm::length(handle_to_ball) < 10.0f)
             {
-                direction = handle_to_ball + glm::vec2(0.0f, -m_ball_radius);
+                direction = handle_to_ball + glm::vec2(0.0f, -m_assets->m_ball_radius);
             }
             else if(direction.x > 100.0f)
             {

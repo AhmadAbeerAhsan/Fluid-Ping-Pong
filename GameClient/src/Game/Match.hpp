@@ -44,14 +44,7 @@ private:
 
     PointLight m_pointLight;
 
-    Shader m_blinn_phong_shdader;
-    Shader m_shadow_map_shdader;
-    Shader m_screen_texture_shader;
-
     std::vector<std::shared_ptr<Model>> m_models{};
-    Model m_floor{};
-
-    float m_ball_radius{2.0f};
     float m_handle_radius{};
 
     CollisionEngine m_collision_engine;

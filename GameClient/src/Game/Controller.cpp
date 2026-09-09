@@ -95,7 +95,6 @@ void Controller::InitControllers()
 
                 if(ten_percent_bigger || ten_percent_smaller || direction_changed)
                 {
-                    std::cout << "Mouse::Distance Moving Event\n";
                     m_mouse_old_vel_check = dir;
                     m_mouse_old_vel_dir_check = new_vel_dir;
                     SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
@@ -106,13 +105,10 @@ void Controller::InitControllers()
                 m_boundary_ptr->SetUserVelocity(glm::vec2(0.0f, 0.0f));
                 if (!m_resting_event_sent)
                 {
-                    std::cout << "Mouse::Distance Resting Event\n";
                     m_resting_event_sent = true;
                     m_mouse_old_vel_check = glm::vec2(0.0f, 0.0f);
                     SendData(m_boundary_ptr->Origin(), m_boundary_ptr->Velocity(), m_player_type);
-                }
-                
-                //m_mouse_old_pos_check = pos[0];
+                }                
             }
         }
     };

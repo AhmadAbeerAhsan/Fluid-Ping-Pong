@@ -32,14 +32,14 @@ Texture::Texture(TextureType type) :
     }
 }
 
-void Texture::Load2DTexture(const char *path)
+void Texture::Load2DTexture(std::string path)
 {
     stbi_set_flip_vertically_on_load(true);
     std::string paths{path};
 
      // load and generate the texture
     int nrChannels;
-    m_2d_raw_data = stbi_load(path, &m_width, &m_height, &nrChannels, 0);
+    m_2d_raw_data = stbi_load(path.c_str(), &m_width, &m_height, &nrChannels, 0);
     if (m_2d_raw_data == nullptr)
     {
         std::cout << "Failed to load texture: " << path << std::endl;

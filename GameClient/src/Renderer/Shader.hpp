@@ -22,7 +22,7 @@ public:
     Shader(const Shader&) = default;
     Shader& operator=(const Shader&) = default;
 
-    void Load(const char* vertexPath, const char* fragmentPath);
+    void Load(std::string vertexPath, std::string fragmentPath);
     void GLCompleteShader();
 
     void Activate();

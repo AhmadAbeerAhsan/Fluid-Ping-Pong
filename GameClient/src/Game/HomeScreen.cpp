@@ -122,7 +122,7 @@ void HomeScreen::DrawMenu()
     ImGui::Dummy(ImVec2(0.0f, 14.0f));
 
     // ---- Menu buttons ----
-    if (UIWidgets::Button("Human vs Bot", 2.0f, UIWidgets::HorizontalLayout::Middle))
+    if (UIWidgets::Button("Human vs AI", 2.0f, UIWidgets::HorizontalLayout::Middle))
     {
         m_ui->Username = m_player_name;
         c1 = Controller::ControllerType::Keyboard1; c2 = Controller::ControllerType::Bot;

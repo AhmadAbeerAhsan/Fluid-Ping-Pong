@@ -33,7 +33,7 @@ public:
     Texture(TextureType type);
     Texture(){};
 
-    void Load2DTexture(const char* path);
+    void Load2DTexture(std::string path);
     void Load3DTexture(std::vector<std::string> paths);
 
     void GLCompleteTexture();

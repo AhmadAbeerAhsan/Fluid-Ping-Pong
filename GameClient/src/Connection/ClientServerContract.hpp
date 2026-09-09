@@ -377,7 +377,7 @@ public:
 
     ErrorData(const std::string& error_message)
     {
-        m_error_message_len = std::min(error_message.size(), m_error_message_buf.size());
+        m_error_message_len = (std::min)(error_message.size(), m_error_message_buf.size());
         std::copy_n(error_message.data(), m_error_message_len, m_error_message_buf.data());
     }
 

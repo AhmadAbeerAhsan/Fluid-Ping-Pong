@@ -7,6 +7,10 @@
 #include "Model.hpp"
 #include "../Game/GameAssetsGenerator.hpp"
 #include "../Utilities/LockFreeQueue.hpp"
+#include <filesystem>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 using Task = std::function<void()>;
 
@@ -15,8 +19,11 @@ class AssetLoader
 private:
     LockFreeQueue<Task> AssetLoaderQueue{};
     std::unique_ptr<std::jthread> thread_ptr;
-    
+    std::string m_asset_path;
+    std::string m_shader_path;
+
     bool m_all_assets_loaded{false};
+    std::string GetFullExecutablePath(std::string extension);
 public:
     AssetLoader(/* args */);
     ~AssetLoader();
@@ -40,7 +47,9 @@ public:
     enum ShaderId : int
     {
         CubeMapShader,
-
+        BlinnPhongShader,
+        ShadowMapShader,
+        ScreenShader,
         CountShader
     };
 
